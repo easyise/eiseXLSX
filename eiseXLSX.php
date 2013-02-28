@@ -30,6 +30,7 @@ class eiseXLSX {
 
 
 const DS = DIRECTORY_SEPARATOR;
+const Date_Bias = 25569; // number of days between Excel and UNIX epoch
 const VERSION = '1.0';
 const TPL_DIR = 'templates';
 
@@ -63,7 +64,6 @@ public function __construct( $templatePath='empty' ) {
         list($arrDir, $arrFiles) = $this->unzip($templatePath);
     }
     
-    
     $nSheets = 0; $nFirstSheet = 1;
     foreach($arrFiles as $path => $contents) {
         
@@ -77,14 +77,17 @@ public function __construct( $templatePath='empty' ) {
         
         if (preg_match("/\.rels$/", $path)){
             foreach($this->arrXMLs[$path]->Relationship as $Relationship){
-                    
                 if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument") {
                     $this->officeDocumentPath = self::getPathByRelTarget($path, (string)$Relationship["Target"]);
-                    $this->officeDocument = $this->arrXMLs[$this->officeDocumentPath];
+                    $this->officeDocument = &$this->arrXMLs[$this->officeDocumentPath];
                 }
                 
                 if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings") {
-                    $this->sharedStrings = $this->arrXMLs[self::getPathByRelTarget($path, (string)$Relationship["Target"])];
+                    $this->sharedStrings = &$this->arrXMLs[self::getPathByRelTarget($path, (string)$Relationship["Target"])];
+                }
+                
+                if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles") {
+                    $this->styles = &$this->arrXMLs[self::getPathByRelTarget($path, (string)$Relationship["Target"])];
                 }
                 
             }
@@ -164,7 +167,7 @@ public function data($cellAddress, $data = null, $t = "s"){
             $o_si = &$this->sharedStrings->si[$siIndex];
             $retVal = strip_tags($o_si->asXML()); //return plain string without formatting
         } else { // if not or undefined
-            $retVal = (string)$o_v[0];
+            $retVal = $this->formatDataRead($c["s"], (string)$o_v);
             if ($data!=null && $t=="s") {// if forthcoming type is string, we add shared string
                 $o_si = &$this->addSharedString($c);
             }
@@ -192,7 +195,7 @@ public function data($cellAddress, $data = null, $t = "s"){
                     $this->updateSharedString($o_si, $data);
                     break;
                 default:
-                    $c->v[0] = (string)$data;
+                    $this->formatDataWrite($t, $data, $c);
                     break;
             }
         }
@@ -208,6 +211,10 @@ public function data($cellAddress, $data = null, $t = "s"){
     
 }
 
+public function getRowCount(){
+    return count($this->_cSheet->sheetData->row);
+}
+
 private function updateSharedString($o_si, $data){
     
     //echo "<pre>";
@@ -218,9 +225,6 @@ private function updateSharedString($o_si, $data){
     while ($dom_si->hasChildNodes()) {
         $dom_si->removeChild($dom_si->firstChild);
     }
-    
-    //echo htmlspecialchars($dom_si->C14N())."\r\n";
-    
     
     if (!is_object($data)){
         $data = simplexml_load_string("<richText><t>".htmlspecialchars($data)."</t></richText>");
@@ -233,12 +237,51 @@ private function updateSharedString($o_si, $data){
         
     }
     
-    //echo htmlspecialchars($dom_si->C14N());
-    //echo '</pre>';
     return simplexml_import_dom($o_si);
-    
-    die();
+
 }
+
+
+private function formatDataRead($style, $data){
+    // get style tag
+    if ((string)$style=="")
+        return (string)$data;
+    
+    $numFmt = (string)$this->styles->cellXfs->xf[(int)$style]["numFmtId"];
+    
+    switch ($numFmt){
+        case "14": // = 'mm-dd-yy';
+        case "15": // = 'd-mmm-yy';
+        case "16": // = 'd-mmm';
+        case "17": // = 'mmm-yy';
+        case "18": // = 'h:mm AM/PM';
+        case "19": // = 'h:mm:ss AM/PM';
+        case "20": // = 'h:mm';
+        case "21": // = 'h:mm:ss';
+        case "22": // = 'm/d/yy h:mm';
+            return 60*60*24* ($data - self::Date_Bias);
+            //return $data
+        default: 
+            return $data;
+            break;
+    }
+}
+
+private function formatDataWrite($type, $data, $c){
+    
+    switch($type){
+        case "d":
+            $c["s"]=$this->pickupDateStyle();
+            $c->v[0] = is_numeric((string)$data) 
+                ? (int)$data/60*60*24 + 25569  // if there's number of seconds since UNIX epoch
+                : strtotime((string)$data)/60*60*24 + 25569;
+            break;
+        default:
+            $c->v[0] = (string)$data;
+            break;
+    }
+}
+
 
 private function addSharedString(&$oCell){
 
@@ -659,6 +702,9 @@ private function renameFile($oldName, $newName){
 private function unzip($zipFilePath){
 
     $targetDirName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
+    unlink($targetDirName);
+    mkdir($targetDirName, 0777, true);
+    
     
     $zip=zip_open($_FILES["fileZIP"]['tmp_name']);
     if(!$zip) { 
@@ -666,18 +712,22 @@ private function unzip($zipFilePath){
     }
 
     while($zip_entry=zip_read($zip)) {
-        $strFileName=$targetDirName. self::DS .zip_entry_name($zip_entry);
-            
+        $strFileName=$targetDirName. self::DS .str_replace("/", self::DS, zip_entry_name($zip_entry));
+        $dir = dirname($strFileName);
+        if (!file_exists($dir)) mkdir($dir, 0777, true);
         zip_entry_open($zip, $zip_entry);
         $strFile = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
         file_put_contents($strFileName, $strFile);
-        
+        unset($strFile);
         zip_entry_close($zip_entry);
         
     }
     zip_close($zip);
+    unset($zip);
     
-    $eiseXLSX_FS = new eiseXLSX_FS($templatePath);
+    //echo $targetDirName;
+    
+    $eiseXLSX_FS = new eiseXLSX_FS($targetDirName);
     $arrRet = $eiseXLSX_FS->get();
     
     self::rmrf($targetDirName);
@@ -687,7 +737,11 @@ private function unzip($zipFilePath){
 }
 
 protected function rmrf($dir){
-    foreach(glob($dir . '/*') as $file) { 
+    
+    $ffs = scandir($dir);
+    foreach($ffs as $file) { 
+        if ($file == '.' || $file == '..') { continue; } 
+        $file = $dir. self::DS .$file;
         if(is_dir($file)) self::rmrf($file); else unlink($file); 
     } 
     rmdir($dir); 
