@@ -117,37 +117,6 @@ public function __construct( $templatePath='empty' ) {
     
 }
 
-protected function getPathByRelTarget($relFilePath, $targetPath){
-    
-    // get directory path of rel file
-    $relFileDirectory = preg_replace("/(_rels)$/", "", dirname($relFilePath));
-    $arrPath = split("/", rtrim($relFileDirectory, "/"));
-    
-    // calculate path to target file
-    $arrTargetPath = split("/", ltrim($targetPath, "/"));    
-    foreach($arrTargetPath as $directory){
-        switch($directory){
-            case ".":
-                break;
-            case "..":
-                if (isset($arrPath[count($arrPath)-1]))
-                    unset($arrPath[count($arrPath)-1]);
-                else 
-                    throw new Exception("Unable to change directory upwards (..)");
-                break;
-            default:
-                $arrPath[] = $directory;
-                break;
-                
-        }
-    }
-    
-    return implode("/", $arrPath);
-}
-
-protected function getRelFilePath($xmlPath){
-    return dirname($xmlPath)."/_rels".str_replace(dirname($xmlPath), "", $xmlPath).".rels";
-}
 
 public function data($cellAddress, $data = null, $t = "s"){
     
@@ -156,11 +125,12 @@ public function data($cellAddress, $data = null, $t = "s"){
     list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
     
     $c = &$this->locateCell($x, $y);
-    if (!$c && $data != null){
+    if (!$c && $data !== null){
         $c = &$this->addCell($x, $y);
     }
     
     if (isset($c->v[0])){ // if it has value
+        
         $o_v = &$c->v[0];
         if ($c["t"]=="s"){ // if existing type is string
             $siIndex = (int)$c->v[0];
@@ -168,7 +138,7 @@ public function data($cellAddress, $data = null, $t = "s"){
             $retVal = strip_tags($o_si->asXML()); //return plain string without formatting
         } else { // if not or undefined
             $retVal = $this->formatDataRead($c["s"], (string)$o_v);
-            if ($data!=null && $t=="s") {// if forthcoming type is string, we add shared string
+            if ($data!==null && $t=="s") {// if forthcoming type is string, we add shared string
                 $o_si = &$this->addSharedString($c);
             }
         }
@@ -184,7 +154,9 @@ public function data($cellAddress, $data = null, $t = "s"){
             }
     }
     
-    if ($data!=null){ // if we set data
+    
+    if ($data!==null){ // if we set data
+        
         if (!is_object($data) && (string)$data=="") { // if there's an empty string, we demolite existing data
             unset($c["t"]);
             unset($c->v[0]);
@@ -200,12 +172,6 @@ public function data($cellAddress, $data = null, $t = "s"){
             }
         }
     }
-    ///*
-    //print_r($this->arrSheets);
-    //print_r($oValue);
-    //print_r($this->sharedStrings);
-    //die();
-    //*/
     
     return $retVal;
     
@@ -215,148 +181,77 @@ public function getRowCount(){
     return count($this->_cSheet->sheetData->row);
 }
 
-private function updateSharedString($o_si, $data){
+public function fill($cellAddress, $fillColor){
     
-    //echo "<pre>";
+    $fillColor = ($fillColor ? self::getExcelColor($fillColor) : "");
     
-    $dom_si = dom_import_simplexml($o_si);
-    //echo htmlspecialchars($dom_si->C14N())."\r\n";
-     
-    while ($dom_si->hasChildNodes()) {
-        $dom_si->removeChild($dom_si->firstChild);
+    // locate cell, if no cell - throw exception
+    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    $c = &$this->locateCell($x, $y);
+    
+    if ($c===null){
+        throw new eiseXLSX_Exception('cannot apply fill - no sheet at '.$cellAddress);
     }
     
-    if (!is_object($data)){
-        $data = simplexml_load_string("<richText><t>".htmlspecialchars($data)."</t></richText>");
-    }
-    
-    foreach($data->children() as $childNode){
-    
-        $domInsert = $dom_si->ownerDocument->importNode(dom_import_simplexml($childNode), true);
-        $dom_si->appendChild($domInsert);
-        
-    }
-    
-    return simplexml_import_dom($o_si);
-
-}
-
-
-private function formatDataRead($style, $data){
-    // get style tag
-    if ((string)$style=="")
-        return (string)$data;
-    
-    $numFmt = (string)$this->styles->cellXfs->xf[(int)$style]["numFmtId"];
-    
-    switch ($numFmt){
-        case "14": // = 'mm-dd-yy';
-        case "15": // = 'd-mmm-yy';
-        case "16": // = 'd-mmm';
-        case "17": // = 'mmm-yy';
-        case "18": // = 'h:mm AM/PM';
-        case "19": // = 'h:mm:ss AM/PM';
-        case "20": // = 'h:mm';
-        case "21": // = 'h:mm:ss';
-        case "22": // = 'm/d/yy h:mm';
-            return 60*60*24* ($data - self::Date_Bias);
-            //return $data
-        default: 
-            return $data;
-            break;
-    }
-}
-
-private function formatDataWrite($type, $data, $c){
-    
-    switch($type){
-        case "d":
-            $c["s"]=$this->pickupDateStyle();
-            $c->v[0] = is_numeric((string)$data) 
-                ? (int)$data/60*60*24 + 25569  // if there's number of seconds since UNIX epoch
-                : strtotime((string)$data)/60*60*24 + 25569;
-            break;
-        default:
-            $c->v[0] = (string)$data;
-            break;
-    }
-}
-
-
-private function addSharedString(&$oCell){
-
-    $ssIndex = count($this->sharedStrings->children());
-    $oSharedString = $this->sharedStrings->addChild("si", "");
-    $this->sharedStrings["uniqueCount"] = $ssIndex+1;
-    $this->sharedStrings["count"] = $this->sharedStrings["count"]+1;
-    
-    $oCell["t"] = "s";
-    if (isset($oCell->v[0]))
-        $oCell->v[0] = $ssIndex;
-    else 
-        $oCell->addChild("v", $ssIndex);
-    
-    return $oSharedString;
-}
-
-private function locateCell($x, $y){
-    // locates <c> simpleXMLElement and returns it
-    
-    $addrA1 = $this->index2letter($x).$y;
-    $addrR1C1 = "R{$y}C{$x}";
-    
-    $row = $this->locateRow($y);
-    if ($row==null) {
-        echo "{$x} {$y} ". $addrA1." ".$addrR1C1."<br>";
-    };
-    
-    foreach($row->c as $ixC => $c){
-        
-        if($c["r"]==$addrA1 || $c["r"]==$addrR1C1){
-            return $c;
+    if ($fillColor){
+        // locate fill by color, if no fill - add 
+        $ix = 0;
+        foreach($this->styles->fills->fill as $fill){
+            if (strtoupper((string)$fill->patternFill->fgColor["rgb"])==$fillColor){
+                $fillIx = $ix;
+                break;
+            }
+            $ix++;
         }
-        
-    }
-
-    return null;
-}
-
-private function addCell($x, $y){
+        if (!isset($fillIx)){
+            $xmlFill = simplexml_load_string("<fill><patternFill patternType=\"solid\"><fgColor rgb=\"{$fillColor}\"/><bgColor indexed=\"64\"/></patternFill></fill>");
+            $this->insertElementByPosition((int)$this->styles->fills["count"], $xmlFill, $this->styles->fills);
+            $fillIx = (int)$this->styles->fills["count"];
+            $this->styles->fills["count"] = (int)$this->styles->fills["count"]+1;
+        }
+    } else 
+        $fillIx = 0; //http://openxmldeveloper.org/discussions/formats/f/14/p/716/3685.aspx : 
+        //Fill ID zero ALWAYS has to be a pattern fill (gray125). Custom fills start at index 1 and up.
     
-    $oValue = null;
     
-    $oRow = $this->locateRow($y);
-    
-    if(!$oRow){
-        $oRow = $this->addRow($y, simplexml_load_string("<row r=\"{$y}\"></row>"));
-    }
-    
-    $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\" t=\"{$t}\"></c>");
-    
-    $oCell = $this->insertElementByPosition($x, $xmlCell, $oRow);
-    
-    return $oCell;
-    
-}
-
-private function locateRow($y){
-    //locates <row> tag with r="$y"
-    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
-        if($row["r"]==$y){
-            return $row;
+    // locate style, if no style - add
+    if ($c["s"]){
+        $cellXf = $this->styles->cellXfs->xf[(int)$c["s"]];
+        if ((int)$cellXf["fillId"] != $fillIx){ // if style is getting changed, we try to locate changed one, if we fail ,we add
+            $ix = 0;
+            foreach($this->styles->cellXfs->xf as $xf ){
+                if ((string)$xf["borderId"]==(string)$cellXf["borderId"] && (string)$xf["fillId"]==$fillIx 
+                    && (string)$xf["fontId"]==(string)$cellXf["fontId"] && (string)$xf["numFmtId"]==(string)$cellXf["numFmtId"] 
+                    && (string)$xf["xfId"]==(string)$cellXf["xfId"] && (string)$xf["applyFill"]==(string)$cellXf["applyFill"] 
+                    ){
+                        $styleIx = $ix; break;
+                    } $ix++;
+            }
+            if (isset($styleIx))
+                $c["s"] = $styleIx;
+            else {
+                $xmlXF = simplexml_load_string($this->styles->cellXfs->xf[(int)$c["s"]]->asXML());
+                $xmlXF["fillId"]=$fillIx; $xmlXF["applyFill"]="1";
+                $this->insertElementByPosition((int)$this->styles->cellXfs["count"], $xmlXF, $this->styles->cellXfs);
+                $styleIx = (int)$this->styles->cellXfs["count"];
+                $this->styles->cellXfs["count"] = (int)$this->styles->cellXfs["count"]+1;
+                $c["s"] = $styleIx ; // update cell with style
+            }
+        }
+    } else {
+        if ($fillIx!==0){
+            $xmlXF = simplexml_load_string("<xf borderId=\"0\" fillId=\"{$fillIx}\" fontId=\"0\" numFmtId=\"0\" xfId=\"0\" applyFill=\"1\"/>");
+            $this->insertElementByPosition((int)$this->styles->cellXfs["count"], $xmlXF, $this->styles->cellXfs);
+            $styleIx = (int)$this->styles->cellXfs["count"];
+            $this->styles->cellXfs["count"] = (int)$this->styles->cellXfs["count"]+1;
+            $c["s"] = $styleIx ; // update cell with style
         }
     }
-    return null;
+    
+    return $c;
+    
 }
 
-private function addRow($y, $oRow){
-    // adds row at position and shifts down all the rows below
-    
-    $this->shiftDownMergedCells($y);
-    
-    return $this->insertElementByPosition($y, $oRow, $this->_cSheet->sheetData);
-    
-}
 
 public function cloneRow($ySrc, $yDest){
     // copies row at $ySrc and inserts it at $yDest with shifting down rows below
@@ -388,166 +283,6 @@ public function cloneRow($ySrc, $yDest){
     
     return $retVal;
     
-}
-
-private function shiftDownMergedCells($yStart, $yOrigin = null){
-    
-    $toAdd = Array();
-    
-    foreach($this->_cSheet->mergeCells->mergeCell as $mergeCell){
-        list($cell1, $cell2) = explode(":", $mergeCell["ref"]);
-        
-        list($x1, $y1) = $this->cellAddress($cell1);
-        list($x2, $y2) = $this->cellAddress($cell2);
-        
-        if (max($y1, $y2)>=$yStart && min($y1, $y2)<$yStart){ // if mergeCells are crossing inserted row
-            throw new eiseXLSX_Exception("mergeCell {$mergeCell["ref"]} is crossing newly inserted row at {$yStart}");
-        }
-        
-        if (min($y1, $y2)>=$yStart){
-            $mergeCell["ref"] = $this->index2letter($x1).($y1+1).":".$this->index2letter($x2).($y2+1);
-        }
-        
-        if ($yOrigin!=null)
-            if ($y1==$y2 && $y1==$yOrigin){ // if there're merged cells on cloned row we add new <mergeCell>
-                $toAdd[] = $this->index2letter($x1).($yStart).":".$this->index2letter($x2).($yStart);
-            }
-    }
-    
-    foreach($toAdd as $newMergeCellRange){
-            $newMC = $this->_cSheet->mergeCells->addChild("mergeCell");
-            $newMC["ref"] = $newMergeCellRange;
-            $this->_cSheet->mergeCells["count"] = $this->_cSheet->mergeCells["count"]+1;
-    }
-    
-}
-
-private function insertElementByPosition($position, $oInsert, $oParent){
-    
-    $domParent = dom_import_simplexml($oParent);
-    $domInsert = $domParent->ownerDocument->importNode(dom_import_simplexml($oInsert), true);
-    
-    $insertBeforeElement = null;
-    foreach($domParent->childNodes as $element){
-        
-        $el_position = $this->getElementPosition($element) ;
-        
-        //shift rows/cells down/right
-        if ( $el_position  >= $position ){
-            $oElement = simplexml_import_dom($element);
-            switch($element->nodeName){
-                case "row":
-                    $oElement["r"] =  $el_position +1; //row 'r' attribute
-                    foreach($oElement->c as $c){ // cells inside it
-                        list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
-                        $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
-                    }
-                    break;
-                case "c":
-                    list($x,$y) = $this->cellAddress($oElement["r"]);
-                    $oElement["r"] = $this->index2letter($x+1).$y;
-                default: 
-                    break;
-            }
-        }
-        
-        $nextElement = &$element->nextSibling;
-        if (!$nextElement)
-            break;
-        if ($el_position < $position && $position <= $this->getElementPosition($nextElement)){
-            $insertBeforeElement = &$nextElement;
-        }
-        
-        
-    }
-    
-    if ($insertBeforeElement!=null){
-        return simplexml_import_dom($domParent->insertBefore($domInsert, $insertBeforeElement));
-    } else 
-        return simplexml_import_dom($domParent->appendChild($domInsert));
-    
-}
-
-private function getElementPosition($domXLSXElement){
-    
-    if ($domXLSXElement->attributes==null)
-        throw new eiseXLSX_Exception('no attributes for cell or row');
-    foreach($domXLSXElement->attributes as $ix=>$attr)
-        if ($attr->name=="r")
-            $strPos = (string)$attr->value;
-                    
-    switch($domXLSXElement->nodeName){
-        case "row":
-            return (int)$strPos;
-        case "c":
-            list($x) = $this->cellAddress($strPos);
-            return (int)$x;
-        default:
-            throw new eiseXLSX_Exception('wrong XLSX tag name"' . $domXLSXElement->nodeName . '"');
-    }
-    
-}
-
-private function getRow($y){
-    $oRow = null;
-    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
-        if($row["r"]==$y){
-            $oRow = &$row;
-            break;
-        }
-    }
-    
-    if ($oRow==null){
-        $oRow = $this->addRow($y);
-    }
-    
-    return $oRow;
-    
-}
-
-private function cellAddress($cellAddress){
-    
-    if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $cellAddress, $arrMatch)){ //R1C1 style
-        return Array($arrMatch[2], $arrMatch[1], self::index2letter( $arrMatch[2] ).$arrMatch[1]
-        , $cellAddress
-        //, "R".self::letter2index(self::index2letter( $arrMatch[1] ))."C$arrMatch[2]"
-        );
-    } else {
-        if (preg_match("/^([a-z]+)([0-9]+)$/i", $cellAddress, $arrMatch)){
-            $x = self::letter2index($arrMatch[1]);
-            $y = $arrMatch[2];
-            return Array($x, $y, $cellAddress, "R{$y}C{$x}");
-        }
-    }
-    
-    throw new eiseXLSX_Exception("invalid cell address: {$cellAddress}");
-}
-
-private function index2letter($index){
-    $nLength = ord("Z")-ord("A")+1;
-    $strLetter = "";
-    while($index > 0){
-        
-        $rem = ($index % $nLength==0 ? $nLength : $index % $nLength);
-        $strLetter = chr(ord("A")+$rem - 1).$strLetter;
-        $index = floor($index/$nLength)-($index % $nLength==0 ? 1 : 0);
-        
-    }
-
-    return $strLetter;
-}
-
-private function letter2index($strLetter){
-    $x = 0;
-    $nLength = ord("Z")-ord("A")+1;
-    for($i = strlen($strLetter)-1; $i>=0;$i--){
-    
-        $letter = strtoupper($strLetter[$i]);
-        $nOffset = ord($letter)-ord("A")+1;
-        $x += $nOffset*(pow($nLength, (strlen($strLetter)-1)-$i));
-        
-    }
-    return $x;
 }
 
 public function selectSheet($id) {
@@ -619,6 +354,357 @@ public function removeSheet($id) {
     //die();
     
 }
+
+/**********************************************/
+// XLSX internal file structure manupulation
+/**********************************************/
+protected function getPathByRelTarget($relFilePath, $targetPath){
+    
+    // get directory path of rel file
+    $relFileDirectory = preg_replace("/(_rels)$/", "", dirname($relFilePath));
+    $arrPath = split("/", rtrim($relFileDirectory, "/"));
+    
+    // calculate path to target file
+    $arrTargetPath = split("/", ltrim($targetPath, "/"));    
+    foreach($arrTargetPath as $directory){
+        switch($directory){
+            case ".":
+                break;
+            case "..":
+                if (isset($arrPath[count($arrPath)-1]))
+                    unset($arrPath[count($arrPath)-1]);
+                else 
+                    throw new Exception("Unable to change directory upwards (..)");
+                break;
+            default:
+                $arrPath[] = $directory;
+                break;
+                
+        }
+    }
+    
+    return implode("/", $arrPath);
+}
+
+protected function getRelFilePath($xmlPath){
+    return dirname($xmlPath)."/_rels".str_replace(dirname($xmlPath), "", $xmlPath).".rels";
+}
+
+
+/**********************************************/
+// sheet data manipulation
+/**********************************************/
+private function updateSharedString($o_si, $data){
+    
+    //echo "<pre>";
+    
+    $dom_si = dom_import_simplexml($o_si);
+    //echo htmlspecialchars($dom_si->C14N())."\r\n";
+     
+    while ($dom_si->hasChildNodes()) {
+        $dom_si->removeChild($dom_si->firstChild);
+    }
+    
+    if (!is_object($data)){
+        $data = simplexml_load_string("<richText><t>".htmlspecialchars($data)."</t></richText>");
+    }
+    
+    foreach($data->children() as $childNode){
+    
+        $domInsert = $dom_si->ownerDocument->importNode(dom_import_simplexml($childNode), true);
+        $dom_si->appendChild($domInsert);
+        
+    }
+    
+    return simplexml_import_dom($o_si);
+
+}
+
+
+private function formatDataRead($style, $data){
+    // get style tag
+    if ((string)$style=="")
+        return (string)$data;
+    
+    $numFmt = (string)$this->styles->cellXfs->xf[(int)$style]["numFmtId"];
+    
+    switch ($numFmt){
+        case "14": // = 'mm-dd-yy';
+        case "15": // = 'd-mmm-yy';
+        case "16": // = 'd-mmm';
+        case "17": // = 'mmm-yy';
+        case "18": // = 'h:mm AM/PM';
+        case "19": // = 'h:mm:ss AM/PM';
+        case "20": // = 'h:mm';
+        case "21": // = 'h:mm:ss';
+        case "22": // = 'm/d/yy h:mm';
+            return 60*60*24* ($data - self::Date_Bias);
+            //return $data
+        default: 
+            return $data;
+            break;
+    }
+}
+
+private function addSharedString(&$oCell){
+
+    $ssIndex = count($this->sharedStrings->children());
+    $oSharedString = $this->sharedStrings->addChild("si", "");
+    $this->sharedStrings["uniqueCount"] = $ssIndex+1;
+    $this->sharedStrings["count"] = $this->sharedStrings["count"]+1;
+    
+    $oCell["t"] = "s";
+    if (isset($oCell->v[0]))
+        $oCell->v[0] = $ssIndex;
+    else 
+        $oCell->addChild("v", $ssIndex);
+    
+    return $oSharedString;
+}
+
+//THIS FUNCTION IS IN TODO LIST.
+private function formatDataWrite($type, $data, $c){
+    
+    switch($type){
+        case "d":
+            $c["s"]=$this->pickupDateStyle();
+            $c->v[0] = is_numeric((string)$data) 
+                ? (int)$data/60*60*24 + 25569  // if there's number of seconds since UNIX epoch
+                : strtotime((string)$data)/60*60*24 + 25569;
+            break;
+        default:
+            $c->v[0] = (string)$data;
+            break;
+    }
+}
+
+private function locateCell($x, $y){
+    // locates <c> simpleXMLElement and returns it
+    
+    $addrA1 = $this->index2letter($x).$y;
+    $addrR1C1 = "R{$y}C{$x}";
+    
+    $row = $this->locateRow($y);
+    //*
+    if ($row===null) {
+        return null;
+    };
+    //*/
+    
+    foreach($row->c as $ixC => $c){
+        
+        if($c["r"]==$addrA1 || $c["r"]==$addrR1C1){
+            return $c;
+        }
+        
+    }
+
+    return null;
+}
+
+private function addCell($x, $y){
+    
+    $oValue = null;
+    
+    $oRow = $this->locateRow($y);
+    
+    if(!$oRow){
+        $oRow = $this->addRow($y, simplexml_load_string("<row r=\"{$y}\"></row>"));
+    }
+    
+    $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\" t=\"{$t}\"></c>");
+    
+    $oCell = &$this->insertElementByPosition($x, $xmlCell, $oRow);
+    
+    return $oCell;
+    
+}
+
+private function locateRow($y){
+    //locates <row> tag with r="$y"
+    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
+        if($row["r"]==$y){
+            return $row;
+        }
+    }
+    return null;
+}
+
+private function addRow($y, $oRow){
+    // adds row at position and shifts down all the rows below
+    
+    $this->shiftDownMergedCells($y);
+    
+    return $this->insertElementByPosition($y, $oRow, $this->_cSheet->sheetData);
+    
+}
+
+private function shiftDownMergedCells($yStart, $yOrigin = null){
+    
+    if (count($this->_cSheet->mergeCells->mergeCell)==0)
+        return;
+    
+    $toAdd = Array();
+    
+    foreach($this->_cSheet->mergeCells->mergeCell as $mergeCell){
+        list($cell1, $cell2) = explode(":", $mergeCell["ref"]);
+        
+        list($x1, $y1) = $this->cellAddress($cell1);
+        list($x2, $y2) = $this->cellAddress($cell2);
+        
+        if (max($y1, $y2)>=$yStart && min($y1, $y2)<$yStart){ // if mergeCells are crossing inserted row
+            throw new eiseXLSX_Exception("mergeCell {$mergeCell["ref"]} is crossing newly inserted row at {$yStart}");
+        }
+        
+        if (min($y1, $y2)>=$yStart){
+            $mergeCell["ref"] = $this->index2letter($x1).($y1+1).":".$this->index2letter($x2).($y2+1);
+        }
+        
+        if ($yOrigin!==null)
+            if ($y1==$y2 && $y1==$yOrigin){ // if there're merged cells on cloned row we add new <mergeCell>
+                $toAdd[] = $this->index2letter($x1).($yStart).":".$this->index2letter($x2).($yStart);
+            }
+    }
+    
+    foreach($toAdd as $newMergeCellRange){
+            $newMC = $this->_cSheet->mergeCells->addChild("mergeCell");
+            $newMC["ref"] = $newMergeCellRange;
+            $this->_cSheet->mergeCells["count"] = $this->_cSheet->mergeCells["count"]+1;
+    }
+    
+}
+
+private function insertElementByPosition($position, $oInsert, $oParent){
+    
+    $domParent = dom_import_simplexml($oParent);
+    $domInsert = $domParent->ownerDocument->importNode(dom_import_simplexml($oInsert), true);
+    
+    $insertBeforeElement = null;
+    $ix = 0;
+    foreach($domParent->childNodes as $element){
+        
+        $el_position = $this->getElementPosition($element, $ix) ;
+        
+        //shift rows/cells down/right
+        if ( $el_position  >= $position ){
+            $oElement = simplexml_import_dom($element);
+            switch($element->nodeName){
+                case "row":
+                    $oElement["r"] =  $el_position +1; //row 'r' attribute
+                    foreach($oElement->c as $c){ // cells inside it
+                        list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
+                        $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
+                    }
+                    break;
+                case "c":
+                    list($x,$y) = $this->cellAddress($oElement["r"]);
+                    $oElement["r"] = $this->index2letter($x+1).$y;
+                default: 
+                    break;
+            }
+        }
+        
+        if ($element->nextSibling && $el_position < $position && $position <= $this->getElementPosition($element->nextSibling, $ix+1)){
+            $insertBeforeElement = &$element->nextSibling;
+        }
+        $ix++;
+    }
+    
+    if ($insertBeforeElement!=null){
+        return simplexml_import_dom($domParent->insertBefore($domInsert, $insertBeforeElement));
+    } else 
+        return simplexml_import_dom($domParent->appendChild($domInsert));
+    
+}
+
+private function getElementPosition($domXLSXElement, $ix){
+    
+    if (count($domXLSXElement->attributes)!=0)
+        foreach($domXLSXElement->attributes as $ix=>$attr)
+            if ($attr->name=="r")
+                $strPos = (string)$attr->value;
+                    
+    switch($domXLSXElement->nodeName){
+        case "row":
+            return (int)$strPos;
+        case "c":
+            list($x) = $this->cellAddress($strPos);
+            return (int)$x;
+        default:
+            return $ix;
+    }
+    
+}
+
+private function getRow($y){
+    $oRow = null;
+    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
+        if($row["r"]==$y){
+            $oRow = &$row;
+            break;
+        }
+    }
+    
+    if ($oRow===null){
+        $oRow = $this->addRow($y);
+    }
+    
+    return $oRow;
+    
+}
+
+private function cellAddress($cellAddress){
+    
+    if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $cellAddress, $arrMatch)){ //R1C1 style
+        return Array($arrMatch[2], $arrMatch[1], self::index2letter( $arrMatch[2] ).$arrMatch[1]
+        , $cellAddress
+        //, "R".self::letter2index(self::index2letter( $arrMatch[1] ))."C$arrMatch[2]"
+        );
+    } else {
+        if (preg_match("/^([a-z]+)([0-9]+)$/i", $cellAddress, $arrMatch)){
+            $x = self::letter2index($arrMatch[1]);
+            $y = $arrMatch[2];
+            return Array($x, $y, $cellAddress, "R{$y}C{$x}");
+        }
+    }
+    
+    throw new eiseXLSX_Exception("invalid cell address: {$cellAddress}");
+}
+
+private function index2letter($index){
+    $nLength = ord("Z")-ord("A")+1;
+    $strLetter = "";
+    while($index > 0){
+        
+        $rem = ($index % $nLength==0 ? $nLength : $index % $nLength);
+        $strLetter = chr(ord("A")+$rem - 1).$strLetter;
+        $index = floor($index/$nLength)-($index % $nLength==0 ? 1 : 0);
+        
+    }
+
+    return $strLetter;
+}
+
+//returns XLSX color senternce basing on web's hex like #RRGGBB
+private function getExcelColor($color){
+    if (!preg_match('/#[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}/i', $color))
+        throw new eiseXLSX_Exception("bad color format: {$color}"); 
+    return strtoupper(preg_replace("/^(#)/", "FF", $color));
+}
+
+private function letter2index($strLetter){
+    $x = 0;
+    $nLength = ord("Z")-ord("A")+1;
+    for($i = strlen($strLetter)-1; $i>=0;$i--){
+    
+        $letter = strtoupper($strLetter[$i]);
+        $nOffset = ord($letter)-ord("A")+1;
+        $x += $nOffset*(pow($nLength, (strlen($strLetter)-1)-$i));
+        
+    }
+    return $x;
+}
+
 
 private function updateWorkbookLinks(){
     
@@ -736,6 +822,7 @@ private function unzip($zipFilePath){
     
 }
 
+// deletes directory recursively, like rm -rf
 protected function rmrf($dir){
     
     $ffs = scandir($dir);
