@@ -71,7 +71,7 @@ public function __construct( $templatePath='empty' ) {
         
         $this->arrXMLs[$path] = @simplexml_load_string($contents);
         
-        if (empty($this->arrXMLs[$path])){
+        if ($this->arrXMLs[$path]===null){
             $this->arrXMLs[$path] = (string)$contents;
         }
         
@@ -350,8 +350,6 @@ public function removeSheet($id) {
     unset($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector->lpstr[$ix]);
     $attr = $this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector->attributes("", true);
     $attr["size"] = count($this->arrSheets);
-    //echo htmlspecialchars($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->asXML());
-    //die();
     
 }
 
@@ -396,10 +394,7 @@ protected function getRelFilePath($xmlPath){
 /**********************************************/
 private function updateSharedString($o_si, $data){
     
-    //echo "<pre>";
-    
     $dom_si = dom_import_simplexml($o_si);
-    //echo htmlspecialchars($dom_si->C14N())."\r\n";
      
     while ($dom_si->hasChildNodes()) {
         $dom_si->removeChild($dom_si->firstChild);
@@ -448,7 +443,8 @@ private function formatDataRead($style, $data){
 
 private function addSharedString(&$oCell){
 
-    $ssIndex = count($this->sharedStrings->children());
+    $ssIndex = count($this->sharedStrings->si);
+    
     $oSharedString = $this->sharedStrings->addChild("si", "");
     $this->sharedStrings["uniqueCount"] = $ssIndex+1;
     $this->sharedStrings["count"] = $this->sharedStrings["count"]+1;
@@ -513,7 +509,6 @@ private function addCell($x, $y){
     }
     
     $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\" t=\"{$t}\"></c>");
-    
     $oCell = &$this->insertElementByPosition($x, $xmlCell, $oRow);
     
     return $oCell;
@@ -596,21 +591,28 @@ private function insertElementByPosition($position, $oInsert, $oParent){
                         $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
                     }
                     break;
-                case "c":
-                    list($x,$y) = $this->cellAddress($oElement["r"]);
-                    $oElement["r"] = $this->index2letter($x+1).$y;
+                case "c": // no shift for cells
+                   //list($x,$y) = $this->cellAddress($oElement["r"]);
+                   //$oElement["r"] = $this->index2letter($x+1).$y;
                 default: 
                     break;
             }
         }
         
-        if ($element->nextSibling && $el_position < $position && $position <= $this->getElementPosition($element->nextSibling, $ix+1)){
+        if($position < $el_position){ // if needed element is ahead of current one
+            $insertBeforeElement = &$element;
+            break;
+        }
+        
+        // else we try to insert element between current and next one
+        if ($element->nextSibling!==null && $position <= $this->getElementPosition($element->nextSibling, $ix+1)){
             $insertBeforeElement = &$element->nextSibling;
+            break;
         }
         $ix++;
     }
     
-    if ($insertBeforeElement!=null){
+    if ($insertBeforeElement!==null){
         return simplexml_import_dom($domParent->insertBefore($domInsert, $insertBeforeElement));
     } else 
         return simplexml_import_dom($domParent->appendChild($domInsert));
@@ -811,8 +813,6 @@ private function unzip($zipFilePath){
     zip_close($zip);
     unset($zip);
     
-    //echo $targetDirName;
-    
     $eiseXLSX_FS = new eiseXLSX_FS($targetDirName);
     $arrRet = $eiseXLSX_FS->get();
     
@@ -847,7 +847,6 @@ public function Output($fileName = "", $dest = "I") {
        // create archive
        $zip = new zipfile();
        foreach($this->arrXMLs as $xmlFileName => $fileContents) {
-            //echo $xmlFileName."::".is_object($fileContents)."<br>";
             $zip->addFile(
                 (is_object($fileContents) ? $fileContents->asXML() : $fileContents)
                 , str_replace("/", self::DS, ltrim($xmlFileName, "/"))
