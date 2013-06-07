@@ -41,6 +41,8 @@ private $arrSheets = array();
 private $arrSheetPath = array();
 private $_cSheet; // current sheet
 
+static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333');
+
 public function __construct( $templatePath='empty' ) {
 
     $this->_eiseXLSXPath = $path;
@@ -71,7 +73,7 @@ public function __construct( $templatePath='empty' ) {
         
         $this->arrXMLs[$path] = @simplexml_load_string($contents);
         
-        if ($this->arrXMLs[$path]===null){
+        if (empty($this->arrXMLs[$path])){
             $this->arrXMLs[$path] = (string)$contents;
         }
         
@@ -84,6 +86,10 @@ public function __construct( $templatePath='empty' ) {
                 
                 if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings") {
                     $this->sharedStrings = &$this->arrXMLs[self::getPathByRelTarget($path, (string)$Relationship["Target"])];
+                }
+                
+                if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme") {
+                    $this->theme = &$this->arrXMLs[self::getPathByRelTarget($path, (string)$Relationship["Target"])];
                 }
                 
                 if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles") {
@@ -182,8 +188,10 @@ public function getRowCount(){
 }
 
 public function fill($cellAddress, $fillColor){
+    // cell address: A1/R1C1
+    // fillColor: HTML-style color in Hex pairs, for example: #FFCC66
     
-    $fillColor = ($fillColor ? self::getExcelColor($fillColor) : "");
+    $fillColor = ($fillColor ? self::colorW3C2Excel($fillColor) : "");
     
     // locate cell, if no cell - throw exception
     list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
@@ -252,6 +260,63 @@ public function fill($cellAddress, $fillColor){
     
 }
 
+public function getFillColor($cellAddress){
+
+    // locate cell, if no cell - throw exception
+    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    $c = &$this->locateCell($x, $y);
+    
+    if ($c===null){
+        throw new eiseXLSX_Exception('cannot apply fill - no sheet at '.$cellAddress);
+    }
+    
+    // locate style, if no style - add
+    if ($c["s"]){
+        $cellXf = $this->styles->cellXfs->xf[(int)$c["s"]];
+        $fillIx = (int)$cellXf["fillId"];
+        $fgColor = $this->styles->fills->fill[$fillIx]->patternFill->fgColor;
+        if ($fgColor["rgb"])
+            return $fgColor["rgb"];
+        else {
+            if ($fgColor['theme']){
+                return $this->getThemeColor($fgColor['theme'], $fgColor['tint']);
+            } else if($fgColor["indexed"]){
+                return self::colorExcel2W3C(self::$arrIndexedColors[(int)$fgColor["indexed"]]);
+            }
+        }
+        $color = $this->styles->fills->fill[$fillIx]->patternFill->fgColor["rgb"];
+        if ($color)
+            return $color;
+        else 
+            return '#FFFFFF';
+    } else {
+        return '#FFFFFF';
+    }
+    
+    return $c;
+
+}
+
+function getThemeColor($theme, $tint){
+    $ixScheme = 0;
+    foreach($this->theme->children("a", true)->themeElements[0]->clrScheme[0] as $ix=>$scheme){
+        if ((int)$theme==$ixScheme){
+            foreach($scheme as $node=>$chl){
+                $domch = dom_import_simplexml($chl);
+                switch($node) {
+                    case "srgbClr":
+                    default: 
+                        return '#'.$domch->getAttribute("val");
+                    case "sysClr":
+                        return '#'.$domch->getAttribute("lastClr");
+                }
+            }
+            echo htmlspecialchars($scheme[0]->asXML());
+            break;
+        }
+        $ixScheme++;
+    }
+}
 
 public function cloneRow($ySrc, $yDest){
     // copies row at $ySrc and inserts it at $yDest with shifting down rows below
@@ -277,7 +342,7 @@ public function cloneRow($ySrc, $yDest){
     
     $oDest["r"] = $yDest;
     
-    $retVal =  $this->insertElementByPosition($yDest, $oDest, $this->_cSheet->sheetData)."\r\n";
+    $retVal =  $this->insertElementByPosition($yDest, $oDest, $this->_cSheet->sheetData);
     
     $this->shiftDownMergedCells($yDest, $ySrc);
     
@@ -433,9 +498,20 @@ private function formatDataRead($style, $data){
         case "20": // = 'h:mm';
         case "21": // = 'h:mm:ss';
         case "22": // = 'm/d/yy h:mm';
-            return 60*60*24* ($data - self::Date_Bias);
+            return date("Y-m-d", 60*60*24* ($data - self::Date_Bias));
             //return $data
         default: 
+            if ((int)$numFmt>=164){ //look for custom format number
+                foreach($this->styles->numFmts[0]->numFmt as $o_numFmt){
+                    if ((int)$o_numFmt["numFmtId"]==(int)$numFmt){
+                        $formatCode = (string)$o_numFmt["formatCode"];
+                        if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
+                            return date("Y-m-d", 60*60*24* ($data - self::Date_Bias));
+                        }
+                        break;
+                    }
+                }
+            }
             return $data;
             break;
     }
@@ -576,28 +652,10 @@ private function insertElementByPosition($position, $oInsert, $oParent){
     
     $insertBeforeElement = null;
     $ix = 0;
+    
     foreach($domParent->childNodes as $element){
         
         $el_position = $this->getElementPosition($element, $ix) ;
-        
-        //shift rows/cells down/right
-        if ( $el_position  >= $position ){
-            $oElement = simplexml_import_dom($element);
-            switch($element->nodeName){
-                case "row":
-                    $oElement["r"] =  $el_position +1; //row 'r' attribute
-                    foreach($oElement->c as $c){ // cells inside it
-                        list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
-                        $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
-                    }
-                    break;
-                case "c": // no shift for cells
-                   //list($x,$y) = $this->cellAddress($oElement["r"]);
-                   //$oElement["r"] = $this->index2letter($x+1).$y;
-                default: 
-                    break;
-            }
-        }
         
         if($position < $el_position){ // if needed element is ahead of current one
             $insertBeforeElement = &$element;
@@ -611,6 +669,23 @@ private function insertElementByPosition($position, $oInsert, $oParent){
         }
         $ix++;
     }
+    
+    $ix = 0;
+    if ($domInsert->nodeName == "row")
+        foreach($domParent->childNodes as $element){
+            $el_position = $this->getElementPosition($element, $ix) ;
+            //shift rows/cells down/right
+            if ( $el_position  >= $position ){
+                $oElement = simplexml_import_dom($element);
+                $oElement["r"] =  $el_position +1; //row 'r' attribute
+                foreach($oElement->c as $c){ // cells inside it
+                    list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
+                    $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
+                }
+            }
+            $ix++;
+        }
+    
     
     if ($insertBeforeElement!==null){
         return simplexml_import_dom($domParent->insertBefore($domInsert, $insertBeforeElement));
@@ -688,10 +763,16 @@ private function index2letter($index){
 }
 
 //returns XLSX color senternce basing on web's hex like #RRGGBB
-private function getExcelColor($color){
+private function colorW3C2Excel($color){
     if (!preg_match('/#[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}/i', $color))
-        throw new eiseXLSX_Exception("bad color format: {$color}"); 
+        throw new eiseXLSX_Exception("bad W3C color format: {$color}"); 
     return strtoupper(preg_replace("/^(#)/", "FF", $color));
+}
+//returns W3C hex in #RRGGBB format basing on Excel
+private function colorExcel2W3C($color){
+    if (!preg_match('/[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}/i', $color))
+        throw new eiseXLSX_Exception("bad OpenXML color format: {$color}"); 
+    return strtoupper(preg_replace("/^([0-9A-F]{2})/i", '#', $color));
 }
 
 private function letter2index($strLetter){
@@ -794,9 +875,9 @@ private function unzip($zipFilePath){
     mkdir($targetDirName, 0777, true);
     
     
-    $zip=zip_open($_FILES["fileZIP"]['tmp_name']);
+    $zip=zip_open($zipFilePath);
     if(!$zip) { 
-        throw new eiseXLSX_Exception("Worng file format"); 
+        throw new eiseXLSX_Exception("Wrong file format"); 
     }
 
     while($zip_entry=zip_read($zip)) {
