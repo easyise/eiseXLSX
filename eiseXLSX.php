@@ -7,6 +7,7 @@ eiseXLSX class
     utilities set:
      - generate filled-in workbook basing on a pre-loaded template
      - save workbook as file
+     - reads data from user-uploaded file
     
     requires SimpleXML
     requires DOM
@@ -17,7 +18,7 @@ eiseXLSX class
     
     based on:
 
-     * Simple XLSX [http://www.kirik.ws/eiseXLSX.html]
+     * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
      * @author kirik [mail@kirik.ws]
      * @version 0.1
      * 
@@ -37,8 +38,8 @@ const TPL_DIR = 'templates';
 // parsed templates
 private $_parsed = array();
 private $arrXMLs = array(); // all XML files
-private $arrSheets = array();
-private $arrSheetPath = array();
+private $arrSheets = array(); // all sheets
+private $arrSheetPath = array(); // all paths to sheets
 private $_cSheet; // current sheet
 
 static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333');
@@ -63,7 +64,7 @@ public function __construct( $templatePath='empty' ) {
         $eiseXLSX_FS = new eiseXLSX_FS($templatePath);
         list($arrDir, $arrFiles) = $eiseXLSX_FS->get();
     } else {
-        list($arrDir, $arrFiles) = $this->unzip($templatePath);
+        list($arrDir, $arrFiles) = $this->unzipToMemory($templatePath);
     }
     
     $nSheets = 0; $nFirstSheet = 1;
@@ -135,6 +136,8 @@ public function data($cellAddress, $data = null, $t = "s"){
         $c = &$this->addCell($x, $y);
     }
     
+    
+    
     if (isset($c->v[0])){ // if it has value
         
         $o_v = &$c->v[0];
@@ -150,7 +153,9 @@ public function data($cellAddress, $data = null, $t = "s"){
         }
     } else {
         $retVal = null;
-        if ($data!=null) // if we'd like to set data
+        if ($data!==null &&
+            !(!is_object($data) && (string)$data=="")
+            ) // if we'd like to set data and not to empty this cell
             if ($t=="s") {// if forthcoming type is string, we add shared string
                 $o_si = &$this->addSharedString($c);
                 $o_v = &$c->v[0];
@@ -184,7 +189,12 @@ public function data($cellAddress, $data = null, $t = "s"){
 }
 
 public function getRowCount(){
-    return count($this->_cSheet->sheetData->row);
+    $lastRowIndex = 1;
+    foreach($this->_cSheet->sheetData->row as $row){
+        $lastRowIndex = (int)$row['r'];
+    }
+    //return count($this->_cSheet->sheetData->row);
+    return $lastRowIndex;
 }
 
 public function fill($cellAddress, $fillColor){
@@ -350,6 +360,15 @@ public function cloneRow($ySrc, $yDest){
     
 }
 
+public function findSheetByName($name){
+    
+    foreach($this->officeDocument->sheets->sheet as $sheet) {
+        if ( (string)$sheet['name'] == $name){
+            return (string)$sheet["sheetId"];
+        }
+    }
+}
+
 public function selectSheet($id) {
     if(!isset($this->arrSheets[$id])) {
         throw new eiseXLSX_Exception('can\'t select sheet #' . $id);
@@ -358,6 +377,72 @@ public function selectSheet($id) {
     return $this;
 }
 
+public function cloneSheet($originSheetId, $newSheetName = ''){
+    
+    // determine maximum sheet ID
+    $maxID = 1;$maxSheetFileIX = 1;
+    foreach($this->officeDocument->sheets->sheet as $sheet) {
+        
+        // sheetID
+        $maxID = max((int)$sheet["sheetId"], $maxID);
+        // filename
+        $sheetFileName = basename($this->arrSheetPath[(string)$sheet["sheetId"]]);
+        preg_match('/sheet([0-9]+)\.xml/', $sheetFileName, $arrMatch);
+        $sheetFileIX = (int)$arrMatch[1];
+        $maxSheetFileIX = max($maxSheetFileIX, $sheetFileIX);
+        // rel
+        $relId = $sheet->attributes('r', TRUE)->id;
+        $maxRelID = max($maxRelID, (int)str_replace('rId', '', $relId));
+        
+    }
+    // new sheetID = max +1
+    $newSheetID = $maxID+1;
+    $newSheetRelID = 'rId'.($maxRelID+1);
+    $newSheetFileName = 'sheet'.($maxSheetFileIX+1).'.xml';
+    $newSheetFullPath = dirname($this->arrSheetPath[(string)$originSheetId]).'/'.$newSheetFileName;
+    $newSheetName = ($newSheetName ? $newSheetName : "Sheet {$newSheetID}");
+       
+    // clone XLSX by source
+    $this->arrXMLs[$newSheetFullPath] = simplexml_load_string($this->arrSheets[(string)$originSheetId]->asXML());
+    // clone XLSX by source
+    if (isset($this->arrXMLs[self::getRelFilePath($this->arrSheetPath[$originSheetId])]))
+        $this->arrXMLs[self::getRelFilePath($newSheetFullPath)] = 
+            simplexml_load_string($this->arrXMLs[self::getRelFilePath($this->arrSheetPath[$originSheetId])]->asXML());
+    
+    // add data to office document
+    $newSh = $this->officeDocument->sheets->addChild('sheet');
+    $newSh->addAttribute('r:id', $newSheetRelID, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+    $newSh->addAttribute('sheetId', $newSheetID);
+    $newSh->addAttribute('name', $newSheetName);
+    
+    // add data to rels
+    // <Relationship Target="worksheets/sheet5.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Id="rId5"/>
+    $newRel = $this->arrXMLs[$this->officeDocumentRelPath]->addChild('Relationship');
+    $newRel->addAttribute('Target', 'worksheets/'.$newSheetFileName);
+    $newRel->addAttribute('Type', "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet");
+    $newRel->addAttribute('Id', $newSheetRelID);
+    
+    // add data to content types
+    //<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet5.xml"/>
+    $newOvr = $this->arrXMLs["/[Content_Types].xml"]->addChild('Override');
+    $newOvr->addAttribute('ContentType', "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml");
+    $newOvr->addAttribute('PartName', "/xl/worksheets/".$newSheetFileName );
+    
+    // recalc worksheet links
+    $this->updateWorkbookLinks();
+
+}
+
+public function renameSheet($sheetId, $newName){
+    foreach($this->officeDocument->sheets->sheet as $sheet) {
+        //<sheet r:id="rId1" sheetId="1" name="ACT"/>
+        if ((string)$sheet["sheetId"]==(string)$sheetId) {
+            $sheet['name'] = $newName;
+            break;
+        }
+    }
+    $this->updateAppXML();
+}
 
 public function removeSheet($id) {
     
@@ -365,6 +450,7 @@ public function removeSheet($id) {
     // determine sheet XML rels
     $sheetXMLRelsFileName = self::getRelFilePath($sheetXMLFileName);
     // loop it, delete files
+    if ($this->arrXMLs[$sheetXMLRelsFileName]->Relationship)
     foreach($this->arrXMLs[$sheetXMLRelsFileName]->Relationship as $Relationship){
         unset($this->arrXMLs[self::getPathByRelTarget($sheetXMLRelsFileName, $Relationship["Target"])]);
     }
@@ -410,12 +496,6 @@ public function removeSheet($id) {
     
     $this->updateWorkbookLinks();
     
-    //remove tab info from app.xml
-    $this->arrXMLs["/docProps/app.xml"]->HeadingPairs->children("vt", true)->vector->variant[1]->i4[0] = count($this->arrSheets);
-    unset($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector->lpstr[$ix]);
-    $attr = $this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector->attributes("", true);
-    $attr["size"] = count($this->arrSheets);
-    
 }
 
 /**********************************************/
@@ -460,7 +540,7 @@ protected function getRelFilePath($xmlPath){
 private function updateSharedString($o_si, $data){
     
     $dom_si = dom_import_simplexml($o_si);
-     
+         
     while ($dom_si->hasChildNodes()) {
         $dom_si->removeChild($dom_si->firstChild);
     }
@@ -536,6 +616,9 @@ private function addSharedString(&$oCell){
 
 //THIS FUNCTION IS IN TODO LIST.
 private function formatDataWrite($type, $data, $c){
+    
+    if (isset($c['t']))
+        unset($c['t']);
     
     switch($type){
         case "d":
@@ -730,7 +813,7 @@ private function getRow($y){
     
 }
 
-private function cellAddress($cellAddress){
+public function cellAddress($cellAddress){
     
     if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $cellAddress, $arrMatch)){ //R1C1 style
         return Array($arrMatch[2], $arrMatch[1], self::index2letter( $arrMatch[2] ).$arrMatch[1]
@@ -797,25 +880,41 @@ private function updateWorkbookLinks(){
     $this->arrSheets = Array();
     $this->arrSheetPath = Array();
     
+    // remove all sheets from office document rels XML
+    /*
+    for($ix = (count($this->arrXMLs[$this->officeDocumentRelPath]->Relationship)-1); $ix>0; $ix--){
+        if ((string)$this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ix]["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"){
+            unset($this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ix]);
+        } 
+    }
+    */
+    
     //making sheet index
     $ixSheet = 1;
     foreach($this->officeDocument->sheets->sheet as $sheet){
         //<sheet r:id="rId1" sheetId="1" name="ACT"/>
+        
         $oldId = (string)$sheet->attributes('r', TRUE)->id;
         $newId = "rId{$ixSheet}";
         
         $sheet->attributes('r', TRUE)->id = $newId;
         
         foreach($this->arrXMLs[$this->officeDocumentRelPath]->Relationship as $Relationship){
-            if ($oldId == (string)$Relationship["Id"]){
+            if ($oldId == (string)$Relationship["Id"] 
+                 && (string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"){
                 $Relationship["Id"] = $newId;
                 $oldPath = (string)$Relationship["Target"];
                 if ($oldId!=$newId) {
                     $newPath = dirname($oldPath)."/sheet{$ixSheet}.xml";
                     $Relationship["Target"] = $newPath; //path in relation
+                } else {
+                    $newPath = $oldPath;
                 }
                 break;
             }
+        }
+        if (!$newPath){
+            $newPath = $oldPath = "worksheets/sheet{$ixSheet}.xml";
         }
         
         // rename remainig sheets
@@ -830,6 +929,7 @@ private function updateWorkbookLinks(){
         if ($oldId!=$newId){ // rename sheet rels only if sheet is changed
             // rename remaining sheets rels
             $relPath = self::getRelFilePath($oldAbsolutePath);
+            if($this->arrXMLs[$relPath]->Relationship)
             foreach($this->arrXMLs[$relPath]->Relationship as $Relationship){
                 $oldRelTarget = (string)$Relationship["Target"];
                 $newRelTarget = preg_replace("/([0-9]+)\.([a-z0-9]+)/i", $ixSheet.'.\2', $oldRelTarget);
@@ -851,9 +951,47 @@ private function updateWorkbookLinks(){
             $this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ixRel]["Id"] = "rId".($ixSheet+1);
         if ((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings")
             $this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ixRel]["Id"] = "rId".($ixSheet+2);
+        if ((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain")
+            $this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ixRel]["Id"] = "rId".($ixSheet+3);
+        if ((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink")
+            $this->arrXMLs[$this->officeDocumentRelPath]->Relationship[$ixRel]["Id"] = "rId".($ixSheet+4);
         $ixRel++;
     }
     
+    $this->updateAppXML();
+        
+}
+
+private function updateAppXML(){
+
+    // update app.xml
+    $nSheetsOld = (int)$this->arrXMLs["/docProps/app.xml"]->HeadingPairs->children("vt", true)->vector->variant[1]->i4[0];
+    $nAllPartsCount = count($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector[0]);
+    $nOtherStuffCount = $nAllPartsCount-$nSheetsOld;
+    $nSheetsNew = count($this->arrSheets);
+    $this->arrXMLs["/docProps/app.xml"]->HeadingPairs->children("vt", true)->vector->variant[1]->i4[0] = $nSheetsNew;
+    
+    // remove ols sheets
+    for ($i=$nSheetsOld-1; $i >= 0; $i--){
+        unset($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector[0]->lpstr[$i]);
+    }
+    
+    // add new sheets at the beginning of list
+    $oParent = $this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector[0];
+    $domParent = dom_import_simplexml($oParent);
+    $insertBefore = @dom_import_simplexml($this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector[0]->lpstr[0]);
+    foreach($this->officeDocument->sheets->sheet as $sheet) {
+        $xmlLpstr = $oParent->addChild('vt:lpstr', (string)$sheet['name'], 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes');
+        $domInsert = $domParent->ownerDocument->importNode(dom_import_simplexml($xmlLpstr), true);
+        if ($insertBefore!==null)
+            $domParent->insertBefore($domInsert, $insertBefore);
+        else 
+            $domParent->appendChild($domInsert);
+    }   
+    
+    $attr = $this->arrXMLs["/docProps/app.xml"]->TitlesOfParts->children("vt", true)->vector->attributes("", true);
+    $attr["size"] = ($nSheetsNew+$nOtherStuffCount);
+
 }
 
 private function renameFile($oldName, $newName){
@@ -868,16 +1006,25 @@ private function renameFile($oldName, $newName){
     
 }
 
-private function unzip($zipFilePath){
+public function unzipToDirectory($zipFilePath, $targetDirName){
 
-    $targetDirName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
-    unlink($targetDirName);
-    mkdir($targetDirName, 0777, true);
+    if (file_exists($targetDirName)){
+        self::rmrf($targetDirName);
+    }
     
-    
+    if(!@mkdir($targetDirName, 0777, true)){
+
+        throw new eiseXLSX_Exception('Unable to create directory to unpack files');
+
+    }
+
+
+    if(!file_exists($zipFilePath))
+        throw new eiseXLSX_Exception("File not found: {$zipFilePath}"); 
+
     $zip=zip_open($zipFilePath);
     if(!$zip) { 
-        throw new eiseXLSX_Exception("Wrong file format"); 
+        throw new eiseXLSX_Exception("Wrong file format: {$zipFilePath}"); 
     }
 
     while($zip_entry=zip_read($zip)) {
@@ -889,11 +1036,18 @@ private function unzip($zipFilePath){
         file_put_contents($strFileName, $strFile);
         unset($strFile);
         zip_entry_close($zip_entry);
-        
     }
     zip_close($zip);
     unset($zip);
+
+}
+
+private function unzipToMemory($zipFilePath){
+
+    $targetDirName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
     
+    $this->unzipToDirectory($zipFilePath, $targetDirName);
+
     $eiseXLSX_FS = new eiseXLSX_FS($targetDirName);
     $arrRet = $eiseXLSX_FS->get();
     
@@ -906,20 +1060,26 @@ private function unzip($zipFilePath){
 // deletes directory recursively, like rm -rf
 protected function rmrf($dir){
     
-    $ffs = scandir($dir);
-    foreach($ffs as $file) { 
-        if ($file == '.' || $file == '..') { continue; } 
-        $file = $dir. self::DS .$file;
-        if(is_dir($file)) self::rmrf($file); else unlink($file); 
-    } 
-    rmdir($dir); 
+    if(is_dir($dir)){
+        $ffs = scandir($dir);
+        foreach($ffs as $file) { 
+            if ($file == '.' || $file == '..') { continue; } 
+            $file = $dir. self::DS .$file;
+            if(is_dir($file)) self::rmrf($file); else unlink($file); 
+        } 
+        rmdir($dir);
+    } else {
+        unlink($dir);
+    }
+     
 }
 
 public function Output($fileName = "", $dest = "I") {
     
-    if(!$fileName) {
-       $fileName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
-       $remove = true;
+    if(!$fileName || $dest == "I" || $dest == "D") {
+        $fileNameSrc = $fileName;
+        $fileName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
+        $remove = true;
     }
     
     if(is_writable($fileName) || is_writable(dirname($fileName))) {
@@ -963,7 +1123,7 @@ public function Output($fileName = "", $dest = "I") {
                 header('Content-Disposition: inline"');
             }
             if ($dest=="D"){
-                header('Content-Disposition: attachment; filename="' . basename($fileName) . '.xlsx"');
+                header('Content-Disposition: attachment; filename="' . basename($fileNameSrc) . '"');
             }
             readfile($fileName); 
             die();
@@ -985,7 +1145,7 @@ public function Output($fileName = "", $dest = "I") {
 
 class eiseXLSX_Exception extends Exception {
     public function __construct($msg) {
-          parent::__construct('Simple XLSX error: ' . $msg);
+          parent::__construct('eiseXLSX error: ' . $msg);
           echo "<pre>";
           debug_print_backtrace();
           echo "</pre>";
