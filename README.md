@@ -26,6 +26,7 @@ Write:
 Obtain formatted XLSX from your customer
 Unzip it to the folder inside your project (or any other folder you like)
 Make PHP script and include similar code inside:
+
 <?php
 include_once "../common/eiseXLSX/eiseXLSX.php";
 
@@ -37,6 +38,7 @@ $xlsx->Output("/some/path/to/my/xlsx/files/myfile.xlsx", "F"); // save the file
 ?>
 
 Read:
+
 <?php
 include_once "../common/eiseXLSX/eiseXLSX.php";
         
