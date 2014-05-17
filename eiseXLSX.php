@@ -505,7 +505,7 @@ protected function getPathByRelTarget($relFilePath, $targetPath){
     
     // get directory path of rel file
     $relFileDirectory = preg_replace("/(_rels)$/", "", dirname($relFilePath));
-    $arrPath = split("/", rtrim($relFileDirectory, "/"));
+    $arrPath = explode("/", rtrim($relFileDirectory, "/"));
     
     // calculate path to target file
     $arrTargetPath = split("/", ltrim($targetPath, "/"));    
