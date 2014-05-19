@@ -508,7 +508,7 @@ protected function getPathByRelTarget($relFilePath, $targetPath){
     $arrPath = explode("/", rtrim($relFileDirectory, "/"));
     
     // calculate path to target file
-    $arrTargetPath = split("/", ltrim($targetPath, "/"));    
+    $arrTargetPath = explode("/", ltrim($targetPath, "/"));    
     foreach($arrTargetPath as $directory){
         switch($directory){
             case ".":
