@@ -46,8 +46,6 @@ static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00',
 
 public function __construct( $templatePath='empty' ) {
 
-    $this->_eiseXLSXPath = $path;
-    
     // read template
     $templatePath = (file_exists($templatePath) 
         ?  $templatePath 
@@ -505,10 +503,10 @@ protected function getPathByRelTarget($relFilePath, $targetPath){
     
     // get directory path of rel file
     $relFileDirectory = preg_replace("/(_rels)$/", "", dirname($relFilePath));
-    $arrPath = explode("/", rtrim($relFileDirectory, "/"));
+    $arrPath = split("/", rtrim($relFileDirectory, "/"));
     
     // calculate path to target file
-    $arrTargetPath = explode("/", ltrim($targetPath, "/"));    
+    $arrTargetPath = split("/", ltrim($targetPath, "/"));    
     foreach($arrTargetPath as $directory){
         switch($directory){
             case ".":
@@ -667,7 +665,7 @@ private function addCell($x, $y){
         $oRow = $this->addRow($y, simplexml_load_string("<row r=\"{$y}\"></row>"));
     }
     
-    $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\" t=\"{$t}\"></c>");
+    $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\"></c>");
     $oCell = &$this->insertElementByPosition($x, $xmlCell, $oRow);
     
     return $oCell;
