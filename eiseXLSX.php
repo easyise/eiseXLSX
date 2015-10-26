@@ -1,38 +1,43 @@
 <?php
-/****************************************************************/
-/*
-eiseXLSX class
-    
-    XLSX file format handling class (Microsoft Office 2007+, spreadsheetML format)
-    utilities set:
-     - generate filled-in workbook basing on a pre-loaded template
-     - save workbook as file
-     - reads data from user-uploaded file
-    
-    requires SimpleXML
-    requires DOM
-    
-    author: Ilya Eliseev (ie@e-ise.com)
-    author: Dmitry Zakharov (dmitry.zakharov@ru.yusen-logistics.com)
-    version: 1.0
-    
-    based on:
-
-     * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
-     * @author kirik [mail@kirik.ws]
-     * @version 0.1
-     * 
-     * Developed under GNU General Public License, version 3:
-     * http://www.gnu.org/licenses/lgpl.txt
-     
-**/
-/****************************************************************/
+/**
+ * eiseXLSX class
+ *   
+ *   XLSX file format handling class (Microsoft Office 2007+, spreadsheetML format).
+ *   Best at:
+ *    - generating filled-in workbook basing on a pre-loaded template
+ *    - saving workbook from a server as file
+ *    - reading data from user-uploaded file
+ *   
+ *   Based on:
+ *
+ *    * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
+ *    * @author kirik [mail@kirik.ws]
+ *    * @version 0.1
+ *    * 
+ *    * Developed under GNU General Public License, version 3:
+ *    * http://www.gnu.org/licenses/lgpl.txt
+ *
+ * 
+ *
+ * @uses SimpleXML
+ * @uses DOM
+ *
+ * @package eiseXLSX (https://github.com/easyise/eiseXLSX)
+ *   
+ * @author Ilya Eliseev (ie@e-ise.com)
+ * @copyright (c) 2012-2015 Ilya S. Eliseev
+ *
+ * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ *
+ * @version 1.1
+ *
+ */
 class eiseXLSX {
 
 
 const DS = DIRECTORY_SEPARATOR;
 const Date_Bias = 25569; // number of days between Excel and UNIX epoch
-const VERSION = '1.0';
+const VERSION = '1.1';
 const TPL_DIR = 'templates';
 
 // parsed templates
@@ -122,14 +127,22 @@ public function __construct( $templatePath='empty' ) {
     
 }
 
-
+/**
+ * This function reads or sets data for cell at specified $cellAddress. If parameter $data is omitted, function reads the data. If it contains something, system tries to assign it.
+ * 
+ * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ * @param variant $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
+ * @param string $t - if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator.
+ *
+ * @return string - cell data before new value is set (if any).
+ */
 public function data($cellAddress, $data = null, $t = "s"){
     
     $retVal = null;
     
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     
-    $c = &$this->locateCell($x, $y);
+    $c = $this->locateCell($x, $y);
     if (!$c && $data !== null){
         $c = &$this->addCell($x, $y);
     }
@@ -186,6 +199,18 @@ public function data($cellAddress, $data = null, $t = "s"){
     
 }
 
+/**
+ * checkAddressInRange() function checks whether given cell belong to specified cell address range.
+ *
+ * @param string $adrNeedle - cell address to check. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25".
+ * @param string $adrHaystack - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell, cell range (cell1:cell2) and list of cells and ranges, space-separated. Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25 ", "C168 AF113:AG116 AI113:AI116 L113:N116".
+ *
+ * @return boolean - true if cell belongs to the range, false otherwise
+ */
+public static function checkAddressInRange($adrNeedle, $adrHaystack){
+
+}
+
 public function getRowCount(){
     $lastRowIndex = 1;
     foreach($this->_cSheet->sheetData->row as $row){
@@ -202,7 +227,7 @@ public function fill($cellAddress, $fillColor){
     $fillColor = ($fillColor ? self::colorW3C2Excel($fillColor) : "");
     
     // locate cell, if no cell - throw exception
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     $c = &$this->locateCell($x, $y);
     
     if ($c===null){
@@ -271,7 +296,7 @@ public function fill($cellAddress, $fillColor){
 public function getFillColor($cellAddress){
 
     // locate cell, if no cell - throw exception
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     $c = &$this->locateCell($x, $y);
     
     if ($c===null){
@@ -341,7 +366,7 @@ public function cloneRow($ySrc, $yDest){
     foreach($oDest->c as $c) {
         unset($c["t"]);
         unset($c->v[0]);
-        list($x) = $this->cellAddress($c["r"]);
+        list($x) = self::cellAddress($c["r"]);
         if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $c["r"]))
             $c["r"] = "R{$yDest}C{$x}";
         else 
@@ -701,8 +726,8 @@ private function shiftDownMergedCells($yStart, $yOrigin = null){
     foreach($this->_cSheet->mergeCells->mergeCell as $mergeCell){
         list($cell1, $cell2) = explode(":", $mergeCell["ref"]);
         
-        list($x1, $y1) = $this->cellAddress($cell1);
-        list($x2, $y2) = $this->cellAddress($cell2);
+        list($x1, $y1) = self::cellAddress($cell1);
+        list($x2, $y2) = self::cellAddress($cell2);
         
         if (max($y1, $y2)>=$yStart && min($y1, $y2)<$yStart){ // if mergeCells are crossing inserted row
             throw new eiseXLSX_Exception("mergeCell {$mergeCell["ref"]} is crossing newly inserted row at {$yStart}");
@@ -760,8 +785,8 @@ private function insertElementByPosition($position, $oInsert, $oParent){
                 $oElement = simplexml_import_dom($element);
                 $oElement["r"] =  $el_position +1; //row 'r' attribute
                 foreach($oElement->c as $c){ // cells inside it
-                    list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
-                    $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
+                    list($x,$y,$a1,$r1c1) = self::cellAddress($c["r"]);
+                    $c["r"] = $c["r"]==$a1 ? self::index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
                 }
             }
             $ix++;
@@ -786,7 +811,7 @@ private function getElementPosition($domXLSXElement, $ix){
         case "row":
             return (int)$strPos;
         case "c":
-            list($x) = $this->cellAddress($strPos);
+            list($x) = self::cellAddress($strPos);
             return (int)$x;
         default:
             return $ix;
@@ -811,7 +836,19 @@ private function getRow($y){
     
 }
 
-public function cellAddress($cellAddress){
+/**
+ * This function receives cell address in R1C1 or A1 format and returns address variations as array of: abscissa, ordinate, A1 and R1C1 -formatted addresses.
+ * 
+ * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ *
+ * @return array - array($x, $y, $a1, $r1c1): 
+ *  $x - column number (starting from 1)
+ *  $y - row number (starting from 1)
+ *  $a1 - cell address in A1 format. "A" in capital case.
+ *  $r1c1 - cell address in R1C1. "R" and "C" are capital too.
+ *
+ */
+public static function cellAddress($cellAddress){
     
     if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $cellAddress, $arrMatch)){ //R1C1 style
         return Array($arrMatch[2], $arrMatch[1], self::index2letter( $arrMatch[2] ).$arrMatch[1]
@@ -829,7 +866,11 @@ public function cellAddress($cellAddress){
     throw new eiseXLSX_Exception("invalid cell address: {$cellAddress}");
 }
 
-private function index2letter($index){
+/**
+ * 
+ *
+ */
+private static function index2letter($index){
     $nLength = ord("Z")-ord("A")+1;
     $strLetter = "";
     while($index > 0){
