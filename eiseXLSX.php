@@ -199,6 +199,132 @@ public function data($cellAddress, $data = null, $t = "s"){
     
 }
 
+public function getDataValidationList($cellAddress){
+
+    foreach($this->_cSheet->dataValidations->dataValidation as $ix=>$val){
+        if($val['type']!='list')
+            continue;
+        $range = $val['sqref'];
+        if( self::checkAddressInRange($cellAddress, $range) ){
+            $ref = (string)$val->formula1[0];
+            break;
+        }
+    }
+
+
+    if(!$ref)
+        foreach($this->_cSheet->extLst->ext as $ext){
+            if($ext["uri"]!='{CCE6A557-97BC-4b89-ADB6-D9C93CAAB3DF}')
+                continue;
+
+            //determining xl-version related x tag
+            $arrNS = $ext->getNamespaces(true);
+            foreach ($arrNS as $prfx => $uri) {
+                if(preg_match('/^x[0-9]*$/', $prfx)){
+                    $nsX = $uri;
+                    break;
+                }
+            }
+
+            $chdn = $ext->children($nsX);
+
+            foreach($chdn->dataValidations->dataValidation as $ix=>$val){
+
+                $range = (string)$val->children('xm', true);
+                if( self::checkAddressInRange($cellAddress, $range) ){
+                    $ref = (string)$val->formula1[0]->children('xm', true);
+                    break;
+                }
+
+            }
+
+            if($ref)
+                break;
+
+        } 
+
+
+    return $this->getDataByRange($ref);
+
+
+/*
+    <extLst>
+- <ext uri="{CCE6A557-97BC-4b89-ADB6-D9C93CAAB3DF}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
+- <x14:dataValidations count="17" xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">
+- <x14:dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1">
+- <x14:formula1>
+  <xm:f>Table!$A$1:$A$37</xm:f> 
+  </x14:formula1>
+  <xm:sqref>R5:S5</xm:sqref> 
+  </x14:dataValidation>
+
+
+    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
+        if($row["r"]==$y){
+            return $row;
+        }
+    }    
+    */
+
+}
+
+/**
+ * This function returns an array of data obtained from specified $range. This range can be as well as formula-formatted (e.g. "Sheet 2!$A1:$B12") as normal particular range (like "B15:B50"). Cell list, range list and other range formats are NOT SUPPORTED (YET).
+ * Reference sheets (if any) should exist in the same workbook as current sheet.
+ * Empty values are not returned. 
+ * If range cannot be located, function returns FALSE.
+ * 
+ * @param $range string - cell range in normal format (like "A14:X14") or formula-based refrence ("Sheet 3!$Z15:$Y17").
+ * 
+ * @return array of data obtained from range with R1C1 address as keys and values as they've been obtained with data() function. If range cannot be located, function returns FALSE.
+ */
+public function getDataByRange($range){
+
+    $arrRet = array();
+    $diffSheetName = $refSheetID = '';
+
+    $range = preg_replace('/\$([a-z0-9]+)/i', '$1', $range);
+
+    $arrRef = explode('!', $range);
+
+    $range = $arrRef[count($arrRef)-1];
+
+    if($diffSheetName = (count($arrRef)>1 ? $arrRef[0] : '')){
+        if( !($refSheetID = $this->findSheetByName($diffSheetName)) )
+            return false;
+
+        foreach($this->arrSheets as $id=>$sheet)
+            if($sheet===$this->_cSheet){
+                $curSheetID = $id;
+                break;
+            }
+
+        $this->selectSheet($refSheetID);
+
+    }
+
+    try {
+        list($aX, $aY) = self::getRangeArea($range);
+    } catch (eiseXLSX_Exception $e){
+        return false;
+    }
+
+    for($x = $aX[0]; $x<=$aX[1]; $x++)
+        for($y = $aY[0]; $y<=$aY[1]; $y++){
+            $addr = "R{$y}C{$x}";
+            $dt =  $this->data($addr);
+            if($dt)
+                $arrRet[$addr] = $dt;
+        }
+
+    if($diffSheetName)
+        $this->selectSheet($curSheetID);
+
+    return $arrRet;
+
+}
+
+
 /**
  * checkAddressInRange() function checks whether given cell belong to specified cell address range.
  *
@@ -209,6 +335,43 @@ public function data($cellAddress, $data = null, $t = "s"){
  */
 public static function checkAddressInRange($adrNeedle, $adrHaystack){
 
+    list($xNeedle, $yNeedle) = self::cellAddress($adrNeedle);
+
+    $arrHaystack = explode(' ', $adrHaystack);
+    foreach($arrHaystack as $range){
+        
+        list($x, $y) = self::getRangeArea($range);
+
+        if($x[0]<=$xNeedle && $xNeedle<=$x[1]
+            && $y[0]<=$yNeedle && $yNeedle<=$y[1]){
+            return true;
+        }
+
+    }   
+
+    return false;
+
+}
+
+/**
+ * This function returns array of top-left and bottom-right coordinates of particular range area.
+ * 
+ * @param $range string - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell or cell range (cell1:cell2). Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25".
+ *
+ * @return array - array(array($x_left, $x_right), array($y_top, $y_bottom)) where x and y are column and row number correspondingly.
+ */
+public static function getRangeArea($range){
+
+    $arrRng = explode(':', $range);
+    
+    list($x[0], $y[0]) = self::cellAddress($arrRng[0]);
+
+    if($arrRng[1]) { list($x[1], $y[1]) = self::cellAddress($arrRng[1]); }
+    else { $x[1] = $x[0]; $y[1] = $y[0];      }
+
+    sort($x); sort($y);
+
+    return array($x, $y);
 }
 
 public function getRowCount(){
@@ -383,6 +546,13 @@ public function cloneRow($ySrc, $yDest){
     
 }
 
+/**
+ * This function returns sheet ID as specified in sheetId attribute of the officeDocument.
+ * 
+ * @param $name string - sheet name to find
+ *
+ * @return string - sheet ID if sheet found in current workbook, otherwise false.
+ */
 public function findSheetByName($name){
     
     foreach($this->officeDocument->sheets->sheet as $sheet) {
@@ -390,13 +560,24 @@ public function findSheetByName($name){
             return (string)$sheet["sheetId"];
         }
     }
+
+    return false;
+
 }
 
+/**
+ * Function sets sheet with specified $id as active. Internally, $this->_cSheet becomes a sheet with $id.
+ * If such sheet cannot be located in the workbook, function throws an exception.
+ * 
+ * @param $id string - sheet ID as specified in sheetId attribute of the officeDocument.
+ *
+ * @return object SimpleXML object that represents the sheet.
+ */
 public function selectSheet($id) {
     if(!isset($this->arrSheets[$id])) {
         throw new eiseXLSX_Exception('can\'t select sheet #' . $id);
     }
-    $this->_cSheet = &$this->arrSheets[$id];
+    $this->_cSheet = $this->arrSheets[$id];
     return $this;
 }
 
