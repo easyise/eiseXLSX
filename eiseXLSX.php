@@ -128,7 +128,11 @@ public function __construct( $templatePath='empty' ) {
 }
 
 /**
- * This function reads or sets data for cell at specified $cellAddress. If parameter $data is omitted, function reads the data. If it contains something, system tries to assign it.
+ * eiseXLSX::data() function reads or sets data for cell with specified $cellAddress. If parameter $data is omitted, function just returns current cell data. If $data contains something, function tries to set it.
+ * Data types note:
+ * - strings are to be returned and assigned as strings
+ * - numeric values are to be returned and set as strings with numeric values in latin1 locale inside.
+ * - date/time values are to be returned and set as strings formatted as 'YYYY-MM-DD HH:MM:SS'
  * 
  * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
  * @param variant $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
@@ -199,17 +203,28 @@ public function data($cellAddress, $data = null, $t = "s"){
     
 }
 
+/**
+ * This function returns contents of drop-down list for given cell, if Data Validation / List option is activated for given cell. If there's no list, this function returns NULL, if reference to drop-down list cell range is broken, it returns FALSE. Otherwise it returns associative array with origin cell addresses as keys and cell data as values. Function eiseXLSX::getDataByRange() (that uses eiseXLSX::data()) is used to obtain cell data.
+ * eiseXLSX::getDataValidatioList() can be useful when you need to obtain contents of reference tables of spreadsheet fields when you try to import the workbook into the database. 
+ * NOTE: This function supports only local cell range references, within current workbook. If requested cell takes drop-down list values from another workbook, function returns FALSE.
+ * NOTE: Function supports only single-row or single-columns references to drop-down cell range. Otherwise it returns FALSE.
+ *
+ * @param string $cellAddress - Cell address. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25".
+ *
+ * @return variant - NULL if there's no data validation, associative array of drop-down values with origin cell addresses as keys and FALSE in case of broken/invalid reference to drop-down cell range.
+ */
 public function getDataValidationList($cellAddress){
 
-    foreach($this->_cSheet->dataValidations->dataValidation as $ix=>$val){
-        if($val['type']!='list')
-            continue;
-        $range = $val['sqref'];
-        if( self::checkAddressInRange($cellAddress, $range) ){
-            $ref = (string)$val->formula1[0];
-            break;
+    if($this->_cSheet->dataValidations->dataValidation)
+        foreach($this->_cSheet->dataValidations->dataValidation as $ix=>$val){
+            if($val['type']!='list')
+                continue;
+            $range = $val['sqref'];
+            if( self::checkAddressInRange($cellAddress, $range) ){
+                $ref = (string)$val->formula1[0];
+                break;
+            }
         }
-    }
 
 
     if(!$ref)
@@ -244,32 +259,12 @@ public function getDataValidationList($cellAddress){
         } 
 
 
-    return $this->getDataByRange($ref);
-
-
-/*
-    <extLst>
-- <ext uri="{CCE6A557-97BC-4b89-ADB6-D9C93CAAB3DF}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
-- <x14:dataValidations count="17" xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">
-- <x14:dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1">
-- <x14:formula1>
-  <xm:f>Table!$A$1:$A$37</xm:f> 
-  </x14:formula1>
-  <xm:sqref>R5:S5</xm:sqref> 
-  </x14:dataValidation>
-
-
-    foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
-        if($row["r"]==$y){
-            return $row;
-        }
-    }    
-    */
+    return ($ref ? $this->getDataByRange($ref) : null);
 
 }
 
 /**
- * This function returns an array of data obtained from specified $range. This range can be as well as formula-formatted (e.g. "Sheet 2!$A1:$B12") as normal particular range (like "B15:B50"). Cell list, range list and other range formats are NOT SUPPORTED (YET).
+ * This function returns an array of data obtained from the specified $range. This range can be as well as formula-formatted (e.g. "Sheet 2!$A1:$B12") as normal particular range (like "B15:B50"). Cell list, range list and other range formats are NOT SUPPORTED (YET).
  * Reference sheets (if any) should exist in the same workbook as current sheet.
  * Empty values are not returned. 
  * If range cannot be located, function returns FALSE.
@@ -764,7 +759,19 @@ private function updateSharedString($o_si, $data){
 
 }
 
-
+/**
+ * eiseXLSX::formatDataRead() function helps to inpreter correctly the numeric value in given cell basing on its $style settings. 
+ * In spreadsheetML actual interpretation of number that stores in <c> tag is defined by style attribute. Cell format data then can be obtained from styles.xml document of workbook.
+ * Current version of eiseXLSX works correctly with the following data types:
+ * - dates: cell data is returned as YYYY-MM-DD string
+ * - numbers: cell data is returned as string that actually contains number in latin1 locale.
+ * NOTE: Current version works only with just a few format types.
+ * 
+ * @param string $style - <c style="XX"> attrribute. Should be numeric or empty string.
+ * @param string $data - contents of <c> tag.
+ *
+ * @return string - cell data converted to appropriate format.
+ */
 private function formatDataRead($style, $data){
     // get style tag
     if ((string)$style=="")
