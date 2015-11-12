@@ -29,7 +29,7 @@
  *
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  *
- * @version 1.1
+ * @version 1.6beta
  *
  */
 class eiseXLSX {
@@ -37,7 +37,7 @@ class eiseXLSX {
 
 const DS = DIRECTORY_SEPARATOR;
 const Date_Bias = 25569; // number of days between Excel and UNIX epoch
-const VERSION = '1.1';
+const VERSION = '1.6';
 const TPL_DIR = 'templates';
 
 // parsed templates

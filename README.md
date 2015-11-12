@@ -1,7 +1,7 @@
 eiseXLSX
 ========
 
-Easy XLSX file data read-write library
+XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.
 
 This class was designed for server-side manipulations with uploaded spreadsheets in Microsoft® Excel™ 2007-2011-2013 file format – OpenXML SpereadsheetML.
 
@@ -23,9 +23,9 @@ Examples
 
 Write:
 
-Obtain formatted XLSX from your customer
-Unzip it to the folder inside your project (or any other folder you like)
-Make PHP script and include similar code inside:
+- Obtain formatted XLSX from your customer
+- Unzip it to the folder inside your project (or any other folder you like)
+- Make PHP script and include similar code inside:
 
 ```
 <?php
