@@ -27,20 +27,23 @@ Obtain formatted XLSX from your customer
 Unzip it to the folder inside your project (or any other folder you like)
 Make PHP script and include similar code inside:
 
+```
 <?php
-include_once "../common/eiseXLSX/eiseXLSX.php";
+include_once "eiseXLSX/eiseXLSX.php";
 
-$xlsx = new eiseXLSX("/some/path/to/templates/mytemplatedirectory");
+$xlsx = new eiseXLSX("myemptyfile.xlsx");
 
-$xlsx->data('X28', 'Hello, world!'); // either A1 or R1C1 are accepted
+$xlsx->data('A4', 'Hello, world!'); // either A1 or R1C1 are accepted
 
-$xlsx->Output("/some/path/to/my/xlsx/files/myfile.xlsx", "F"); // save the file
+$xlsx->Output("mynewfile.xlsx", "F"); // save the file
 ?>
+```
 
 Read:
 
+```
 <?php
-include_once "../common/eiseXLSX/eiseXLSX.php";
+include_once "eiseXLSX.php";
         
 try { //give it a try to avoid any uncaught error 
       // caused by broken content of uploaded file
@@ -49,8 +52,9 @@ try { //give it a try to avoid any uncaught error
     die($e->getMessage());
 }
 
-$myData = $xlsx->data("R15C10"); //voilat!
+echo ($myData = $xlsx->data("R15C10")); //voilat!
 ?>
+```
 
 New in version 1.6: 
 method eiseXLSX::getDataValidationList($cellAddress) - returns data validation list as associative array
