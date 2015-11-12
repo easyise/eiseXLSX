@@ -369,6 +369,11 @@ public static function getRangeArea($range){
     return array($x, $y);
 }
 
+/**
+ * This method returns number of rows in active sheet.
+ *
+ * @return int - row number of the last row.
+ */
 public function getRowCount(){
     $lastRowIndex = 1;
     foreach($this->_cSheet->sheetData->row as $row){
@@ -509,8 +514,19 @@ function getThemeColor($theme, $tint){
     }
 }
 
+/**
+ * eiseXLSX::cloneRow() method clones row with number $ySrc to $yDest, other existing cells are moved down by one position. 
+ * All row contents and styles are simply copied from origin.
+ * It returns simpleXML object with cloned row.
+ * WARNING: In version 1.6 this method is not friendly to PrintAreas, it they exist and include cells below cloned one. You'll probalby receive 'Currupted file' message from Excel.
+ * WARNING: This function wasn't tested for cloning rows from down to up: it's recommended to use it only if $ySrc < $yDest, i.e. when your origin row is upper than destination.
+ * 
+ * @param int $ySrc - row number of origin. Starts from 1, as user can see on Excel screen
+ * @param int $yDest - destination row number.
+ *
+ * @return object simpleXML object with newly added row
+ */
 public function cloneRow($ySrc, $yDest){
-    // copies row at $ySrc and inserts it at $yDest with shifting down rows below
     
     $oSrc = $this->locateRow($ySrc);
     if (!$oSrc){
@@ -564,7 +580,7 @@ public function findSheetByName($name){
  * Function sets sheet with specified $id as active. Internally, $this->_cSheet becomes a sheet with $id.
  * If such sheet cannot be located in the workbook, function throws an exception.
  * 
- * @param $id string - sheet ID as specified in sheetId attribute of the officeDocument.
+ * @param string $id - sheet ID as specified in sheetId attribute of the officeDocument.
  *
  * @return object SimpleXML object that represents the sheet.
  */
@@ -576,6 +592,15 @@ public function selectSheet($id) {
     return $this;
 }
 
+/**
+ * This method clones original sheet with sheetId supplied with $originSheetId parameter into new one labeled as $newSheetName
+ * New sheet doesn't become active. eiseXLSX::cloneSheet() returns sheetId of newly created sheet.
+ * 
+ * @param string $originSheetId - sheetId of origin sheet
+ * @param string $newSheetName - new sheet label, if not set eiseXLSX sets 'Sheet <newSheetId>' as label.
+ * 
+ * @return string $newSheetId - id of sheet added to the workbook.
+ */
 public function cloneSheet($originSheetId, $newSheetName = ''){
     
     // determine maximum sheet ID
@@ -629,6 +654,8 @@ public function cloneSheet($originSheetId, $newSheetName = ''){
     
     // recalc worksheet links
     $this->updateWorkbookLinks();
+
+    return (string)$newSheetID;
 
 }
 
