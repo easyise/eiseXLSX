@@ -1,38 +1,43 @@
 <?php
-/****************************************************************/
-/*
-eiseXLSX class
-    
-    XLSX file format handling class (Microsoft Office 2007+, spreadsheetML format)
-    utilities set:
-     - generate filled-in workbook basing on a pre-loaded template
-     - save workbook as file
-     - reads data from user-uploaded file
-    
-    requires SimpleXML
-    requires DOM
-    
-    author: Ilya Eliseev (ie@e-ise.com)
-    author: Dmitry Zakharov (dmitry.zakharov@ru.yusen-logistics.com)
-    version: 1.0
-    
-    based on:
-
-     * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
-     * @author kirik [mail@kirik.ws]
-     * @version 0.1
-     * 
-     * Developed under GNU General Public License, version 3:
-     * http://www.gnu.org/licenses/lgpl.txt
-     
-**/
-/****************************************************************/
+/**
+ * eiseXLSX class
+ *   
+ *   XLSX file format handling class (Microsoft Office 2007+, spreadsheetML format).
+ *   Best at:
+ *    - generating filled-in workbook basing on a pre-loaded template
+ *    - saving workbook from a server as file
+ *    - reading data from user-uploaded file
+ *   
+ *   Based on:
+ *
+ *    * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
+ *    * @author kirik [mail@kirik.ws]
+ *    * @version 0.1
+ *    * 
+ *    * Developed under GNU General Public License, version 3:
+ *    * http://www.gnu.org/licenses/lgpl.txt
+ *
+ * 
+ *
+ * @uses SimpleXML
+ * @uses DOM
+ *
+ * @package eiseXLSX (https://github.com/easyise/eiseXLSX)
+ *   
+ * @author Ilya Eliseev (ie@e-ise.com)
+ * @copyright (c) 2012-2015 Ilya S. Eliseev
+ *
+ * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ *
+ * @version 1.1
+ *
+ */
 class eiseXLSX {
 
 
 const DS = DIRECTORY_SEPARATOR;
 const Date_Bias = 25569; // number of days between Excel and UNIX epoch
-const VERSION = '1.0';
+const VERSION = '1.1';
 const TPL_DIR = 'templates';
 
 // parsed templates
@@ -122,14 +127,26 @@ public function __construct( $templatePath='empty' ) {
     
 }
 
-
+/**
+ * eiseXLSX::data() function reads or sets data for cell with specified $cellAddress. If parameter $data is omitted, function just returns current cell data. If $data contains something, function tries to set it.
+ * Data types note:
+ * - strings are to be returned and assigned as strings
+ * - numeric values are to be returned and set as strings with numeric values in latin1 locale inside.
+ * - date/time values are to be returned and set as strings formatted as 'YYYY-MM-DD HH:MM:SS'
+ * 
+ * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ * @param variant $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
+ * @param string $t - if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator.
+ *
+ * @return string - cell data before new value is set (if any).
+ */
 public function data($cellAddress, $data = null, $t = "s"){
     
     $retVal = null;
     
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     
-    $c = &$this->locateCell($x, $y);
+    $c = $this->locateCell($x, $y);
     if (!$c && $data !== null){
         $c = &$this->addCell($x, $y);
     }
@@ -186,6 +203,177 @@ public function data($cellAddress, $data = null, $t = "s"){
     
 }
 
+/**
+ * This function returns contents of drop-down list for given cell, if Data Validation / List option is activated for given cell. If there's no list, this function returns NULL, if reference to drop-down list cell range is broken, it returns FALSE. Otherwise it returns associative array with origin cell addresses as keys and cell data as values. Function eiseXLSX::getDataByRange() (that uses eiseXLSX::data()) is used to obtain cell data.
+ * eiseXLSX::getDataValidatioList() can be useful when you need to obtain contents of reference tables of spreadsheet fields when you try to import the workbook into the database. 
+ * NOTE: This function supports only local cell range references, within current workbook. If requested cell takes drop-down list values from another workbook, function returns FALSE.
+ * NOTE: Function supports only single-row or single-columns references to drop-down cell range. Otherwise it returns FALSE.
+ *
+ * @param string $cellAddress - Cell address. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25".
+ *
+ * @return variant - NULL if there's no data validation, associative array of drop-down values with origin cell addresses as keys and FALSE in case of broken/invalid reference to drop-down cell range.
+ */
+public function getDataValidationList($cellAddress){
+
+    if($this->_cSheet->dataValidations->dataValidation)
+        foreach($this->_cSheet->dataValidations->dataValidation as $ix=>$val){
+            if($val['type']!='list')
+                continue;
+            $range = $val['sqref'];
+            if( self::checkAddressInRange($cellAddress, $range) ){
+                $ref = (string)$val->formula1[0];
+                break;
+            }
+        }
+
+
+    if(!$ref)
+        foreach($this->_cSheet->extLst->ext as $ext){
+            if($ext["uri"]!='{CCE6A557-97BC-4b89-ADB6-D9C93CAAB3DF}')
+                continue;
+
+            //determining xl-version related x tag
+            $arrNS = $ext->getNamespaces(true);
+            foreach ($arrNS as $prfx => $uri) {
+                if(preg_match('/^x[0-9]*$/', $prfx)){
+                    $nsX = $uri;
+                    break;
+                }
+            }
+
+            $chdn = $ext->children($nsX);
+
+            foreach($chdn->dataValidations->dataValidation as $ix=>$val){
+
+                $range = (string)$val->children('xm', true);
+                if( self::checkAddressInRange($cellAddress, $range) ){
+                    $ref = (string)$val->formula1[0]->children('xm', true);
+                    break;
+                }
+
+            }
+
+            if($ref)
+                break;
+
+        } 
+
+
+    return ($ref ? $this->getDataByRange($ref) : null);
+
+}
+
+/**
+ * This function returns an array of data obtained from the specified $range. This range can be as well as formula-formatted (e.g. "Sheet 2!$A1:$B12") as normal particular range (like "B15:B50"). Cell list, range list and other range formats are NOT SUPPORTED (YET).
+ * Reference sheets (if any) should exist in the same workbook as current sheet.
+ * Empty values are not returned. 
+ * If range cannot be located, function returns FALSE.
+ * 
+ * @param $range string - cell range in normal format (like "A14:X14") or formula-based refrence ("Sheet 3!$Z15:$Y17").
+ * 
+ * @return array of data obtained from range with R1C1 address as keys and values as they've been obtained with data() function. If range cannot be located, function returns FALSE.
+ */
+public function getDataByRange($range){
+
+    $arrRet = array();
+    $diffSheetName = $refSheetID = '';
+
+    $range = preg_replace('/\$([a-z0-9]+)/i', '$1', $range);
+
+    $arrRef = explode('!', $range);
+
+    $range = $arrRef[count($arrRef)-1];
+
+    if($diffSheetName = (count($arrRef)>1 ? $arrRef[0] : '')){
+        if( !($refSheetID = $this->findSheetByName($diffSheetName)) )
+            return false;
+
+        foreach($this->arrSheets as $id=>$sheet)
+            if($sheet===$this->_cSheet){
+                $curSheetID = $id;
+                break;
+            }
+
+        $this->selectSheet($refSheetID);
+
+    }
+
+    try {
+        list($aX, $aY) = self::getRangeArea($range);
+    } catch (eiseXLSX_Exception $e){
+        return false;
+    }
+
+    for($x = $aX[0]; $x<=$aX[1]; $x++)
+        for($y = $aY[0]; $y<=$aY[1]; $y++){
+            $addr = "R{$y}C{$x}";
+            $dt =  $this->data($addr);
+            if($dt)
+                $arrRet[$addr] = $dt;
+        }
+
+    if($diffSheetName)
+        $this->selectSheet($curSheetID);
+
+    return $arrRet;
+
+}
+
+
+/**
+ * checkAddressInRange() function checks whether given cell belong to specified cell address range.
+ *
+ * @param string $adrNeedle - cell address to check. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25".
+ * @param string $adrHaystack - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell, cell range (cell1:cell2) and list of cells and ranges, space-separated. Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25 ", "C168 AF113:AG116 AI113:AI116 L113:N116".
+ *
+ * @return boolean - true if cell belongs to the range, false otherwise
+ */
+public static function checkAddressInRange($adrNeedle, $adrHaystack){
+
+    list($xNeedle, $yNeedle) = self::cellAddress($adrNeedle);
+
+    $arrHaystack = explode(' ', $adrHaystack);
+    foreach($arrHaystack as $range){
+        
+        list($x, $y) = self::getRangeArea($range);
+
+        if($x[0]<=$xNeedle && $xNeedle<=$x[1]
+            && $y[0]<=$yNeedle && $yNeedle<=$y[1]){
+            return true;
+        }
+
+    }   
+
+    return false;
+
+}
+
+/**
+ * This function returns array of top-left and bottom-right coordinates of particular range area.
+ * 
+ * @param $range string - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell or cell range (cell1:cell2). Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25".
+ *
+ * @return array - array(array($x_left, $x_right), array($y_top, $y_bottom)) where x and y are column and row number correspondingly.
+ */
+public static function getRangeArea($range){
+
+    $arrRng = explode(':', $range);
+    
+    list($x[0], $y[0]) = self::cellAddress($arrRng[0]);
+
+    if($arrRng[1]) { list($x[1], $y[1]) = self::cellAddress($arrRng[1]); }
+    else { $x[1] = $x[0]; $y[1] = $y[0];      }
+
+    sort($x); sort($y);
+
+    return array($x, $y);
+}
+
+/**
+ * This method returns number of rows in active sheet.
+ *
+ * @return int - row number of the last row.
+ */
 public function getRowCount(){
     $lastRowIndex = 1;
     foreach($this->_cSheet->sheetData->row as $row){
@@ -202,7 +390,7 @@ public function fill($cellAddress, $fillColor){
     $fillColor = ($fillColor ? self::colorW3C2Excel($fillColor) : "");
     
     // locate cell, if no cell - throw exception
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     $c = &$this->locateCell($x, $y);
     
     if ($c===null){
@@ -271,7 +459,7 @@ public function fill($cellAddress, $fillColor){
 public function getFillColor($cellAddress){
 
     // locate cell, if no cell - throw exception
-    list( $x, $y, $addrA1, $addrR1C1 ) = $this->cellAddress($cellAddress);
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
     $c = &$this->locateCell($x, $y);
     
     if ($c===null){
@@ -326,8 +514,19 @@ function getThemeColor($theme, $tint){
     }
 }
 
+/**
+ * eiseXLSX::cloneRow() method clones row with number $ySrc to $yDest, other existing cells are moved down by one position. 
+ * All row contents and styles are simply copied from origin.
+ * It returns simpleXML object with cloned row.
+ * WARNING: In version 1.6 this method is not friendly to PrintAreas, it they exist and include cells below cloned one. You'll probalby receive 'Currupted file' message from Excel.
+ * WARNING: This function wasn't tested for cloning rows from down to up: it's recommended to use it only if $ySrc < $yDest, i.e. when your origin row is upper than destination.
+ * 
+ * @param int $ySrc - row number of origin. Starts from 1, as user can see on Excel screen
+ * @param int $yDest - destination row number.
+ *
+ * @return object simpleXML object with newly added row
+ */
 public function cloneRow($ySrc, $yDest){
-    // copies row at $ySrc and inserts it at $yDest with shifting down rows below
     
     $oSrc = $this->locateRow($ySrc);
     if (!$oSrc){
@@ -341,7 +540,7 @@ public function cloneRow($ySrc, $yDest){
     foreach($oDest->c as $c) {
         unset($c["t"]);
         unset($c->v[0]);
-        list($x) = $this->cellAddress($c["r"]);
+        list($x) = self::cellAddress($c["r"]);
         if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $c["r"]))
             $c["r"] = "R{$yDest}C{$x}";
         else 
@@ -358,6 +557,13 @@ public function cloneRow($ySrc, $yDest){
     
 }
 
+/**
+ * This function returns sheet ID as specified in sheetId attribute of the officeDocument.
+ * 
+ * @param $name string - sheet name to find
+ *
+ * @return string - sheet ID if sheet found in current workbook, otherwise false.
+ */
 public function findSheetByName($name){
     
     foreach($this->officeDocument->sheets->sheet as $sheet) {
@@ -365,16 +571,36 @@ public function findSheetByName($name){
             return (string)$sheet["sheetId"];
         }
     }
+
+    return false;
+
 }
 
+/**
+ * Function sets sheet with specified $id as active. Internally, $this->_cSheet becomes a sheet with $id.
+ * If such sheet cannot be located in the workbook, function throws an exception.
+ * 
+ * @param string $id - sheet ID as specified in sheetId attribute of the officeDocument.
+ *
+ * @return object SimpleXML object that represents the sheet.
+ */
 public function selectSheet($id) {
     if(!isset($this->arrSheets[$id])) {
         throw new eiseXLSX_Exception('can\'t select sheet #' . $id);
     }
-    $this->_cSheet = &$this->arrSheets[$id];
+    $this->_cSheet = $this->arrSheets[$id];
     return $this;
 }
 
+/**
+ * This method clones original sheet with sheetId supplied with $originSheetId parameter into new one labeled as $newSheetName
+ * New sheet doesn't become active. eiseXLSX::cloneSheet() returns sheetId of newly created sheet.
+ * 
+ * @param string $originSheetId - sheetId of origin sheet
+ * @param string $newSheetName - new sheet label, if not set eiseXLSX sets 'Sheet <newSheetId>' as label.
+ * 
+ * @return string $newSheetId - id of sheet added to the workbook.
+ */
 public function cloneSheet($originSheetId, $newSheetName = ''){
     
     // determine maximum sheet ID
@@ -428,6 +654,8 @@ public function cloneSheet($originSheetId, $newSheetName = ''){
     
     // recalc worksheet links
     $this->updateWorkbookLinks();
+
+    return (string)$newSheetID;
 
 }
 
@@ -558,7 +786,19 @@ private function updateSharedString($o_si, $data){
 
 }
 
-
+/**
+ * eiseXLSX::formatDataRead() function helps to inpreter correctly the numeric value in given cell basing on its $style settings. 
+ * In spreadsheetML actual interpretation of number that stores in <c> tag is defined by style attribute. Cell format data then can be obtained from styles.xml document of workbook.
+ * Current version of eiseXLSX works correctly with the following data types:
+ * - dates: cell data is returned as YYYY-MM-DD string
+ * - numbers: cell data is returned as string that actually contains number in latin1 locale.
+ * NOTE: Current version works only with just a few format types.
+ * 
+ * @param string $style - <c style="XX"> attrribute. Should be numeric or empty string.
+ * @param string $data - contents of <c> tag.
+ *
+ * @return string - cell data converted to appropriate format.
+ */
 private function formatDataRead($style, $data){
     // get style tag
     if ((string)$style=="")
@@ -701,8 +941,8 @@ private function shiftDownMergedCells($yStart, $yOrigin = null){
     foreach($this->_cSheet->mergeCells->mergeCell as $mergeCell){
         list($cell1, $cell2) = explode(":", $mergeCell["ref"]);
         
-        list($x1, $y1) = $this->cellAddress($cell1);
-        list($x2, $y2) = $this->cellAddress($cell2);
+        list($x1, $y1) = self::cellAddress($cell1);
+        list($x2, $y2) = self::cellAddress($cell2);
         
         if (max($y1, $y2)>=$yStart && min($y1, $y2)<$yStart){ // if mergeCells are crossing inserted row
             throw new eiseXLSX_Exception("mergeCell {$mergeCell["ref"]} is crossing newly inserted row at {$yStart}");
@@ -760,8 +1000,8 @@ private function insertElementByPosition($position, $oInsert, $oParent){
                 $oElement = simplexml_import_dom($element);
                 $oElement["r"] =  $el_position +1; //row 'r' attribute
                 foreach($oElement->c as $c){ // cells inside it
-                    list($x,$y,$a1,$r1c1) = $this->cellAddress($c["r"]);
-                    $c["r"] = $c["r"]==$a1 ? $this->index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
+                    list($x,$y,$a1,$r1c1) = self::cellAddress($c["r"]);
+                    $c["r"] = $c["r"]==$a1 ? self::index2letter($x).($el_position +1) : "R".($el_position +1)."C{$x}";
                 }
             }
             $ix++;
@@ -786,7 +1026,7 @@ private function getElementPosition($domXLSXElement, $ix){
         case "row":
             return (int)$strPos;
         case "c":
-            list($x) = $this->cellAddress($strPos);
+            list($x) = self::cellAddress($strPos);
             return (int)$x;
         default:
             return $ix;
@@ -811,7 +1051,19 @@ private function getRow($y){
     
 }
 
-public function cellAddress($cellAddress){
+/**
+ * This function receives cell address in R1C1 or A1 format and returns address variations as array of: abscissa, ordinate, A1 and R1C1 -formatted addresses.
+ * 
+ * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ *
+ * @return array - array($x, $y, $a1, $r1c1): 
+ *  $x - column number (starting from 1)
+ *  $y - row number (starting from 1)
+ *  $a1 - cell address in A1 format. "A" in capital case.
+ *  $r1c1 - cell address in R1C1. "R" and "C" are capital too.
+ *
+ */
+public static function cellAddress($cellAddress){
     
     if(preg_match("/^R([0-9]+)C([0-9]+)$/i", $cellAddress, $arrMatch)){ //R1C1 style
         return Array($arrMatch[2], $arrMatch[1], self::index2letter( $arrMatch[2] ).$arrMatch[1]
@@ -829,7 +1081,11 @@ public function cellAddress($cellAddress){
     throw new eiseXLSX_Exception("invalid cell address: {$cellAddress}");
 }
 
-private function index2letter($index){
+/**
+ * 
+ *
+ */
+private static function index2letter($index){
     $nLength = ord("Z")-ord("A")+1;
     $strLetter = "";
     while($index > 0){
