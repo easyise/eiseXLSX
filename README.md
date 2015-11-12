@@ -1,7 +1,7 @@
 eiseXLSX
 ========
 
-Simple XLSX file data read-write library
+Easy XLSX file data read-write library
 
 This class was designed for server-side manipulations with uploaded spreadsheets in Microsoft® Excel™ 2007-2011-2013 file format – OpenXML SpereadsheetML.
 
@@ -52,3 +52,7 @@ try { //give it a try to avoid any uncaught error
 $myData = $xlsx->data("R15C10"); //voilat!
 ?>
 
+New in version 1.6: 
+method eiseXLSX::getDataValidationList($cellAddress) - returns data validation list as associative array
+static method eiseXLSX::checkAddressInRange() - checks whether cell address belong to given range or not
+method eiseXSLX::getDataByRange() - returns associative array of data in specified cell range
