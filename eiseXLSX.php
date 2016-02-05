@@ -579,6 +579,7 @@ public function findSheetByName($name){
 /**
  * Function sets sheet with specified $id as active. Internally, $this->_cSheet becomes a sheet with $id.
  * If such sheet cannot be located in the workbook, function throws an exception.
+ * NOTICE: sheet numbers (Id's) are started from 1 in speadSheetML.
  * 
  * @param string $id - sheet ID as specified in sheetId attribute of the officeDocument.
  *
@@ -602,6 +603,11 @@ public function selectSheet($id) {
  * @return string $newSheetId - id of sheet added to the workbook.
  */
 public function cloneSheet($originSheetId, $newSheetName = ''){
+
+    // if origin sheet cannot be located, we throw an exception
+    if(!isset($this->arrSheets[$originSheetId])) {
+        throw new eiseXLSX_Exception('can\'t select sheet #' . $originSheetId);
+    }
     
     // determine maximum sheet ID
     $maxID = 1;$maxSheetFileIX = 1;
@@ -660,6 +666,12 @@ public function cloneSheet($originSheetId, $newSheetName = ''){
 }
 
 public function renameSheet($sheetId, $newName){
+
+    // if target sheet cannot be located, we throw an exception
+    if(!isset($this->arrSheets[$sheetId])) {
+        throw new eiseXLSX_Exception('can\'t get sheet #' . $sheetId);
+    }
+
     foreach($this->officeDocument->sheets->sheet as $sheet) {
         //<sheet r:id="rId1" sheetId="1" name="ACT"/>
         if ((string)$sheet["sheetId"]==(string)$sheetId) {
