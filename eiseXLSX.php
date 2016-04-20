@@ -47,9 +47,17 @@ private $arrSheets = array(); // all sheets
 private $arrSheetPath = array(); // all paths to sheets
 private $_cSheet; // current sheet
 
+public $defaultFileName = 'eiseXLSX.xlsx';
+
 static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333');
 
-public function __construct( $templatePath='empty' ) {
+public function __construct( $templatePath='' ) {
+
+    if(!$templatePath){
+        $templatePath = 'empty';
+    } else {
+        $this->defaultFileName = basename($templatePath);
+    }
 
     // read template
     $templatePath = (file_exists($templatePath) 
@@ -1407,12 +1415,28 @@ protected function rmrf($dir){
      
 }
 
-public function Output($fileName = "", $dest = "I") {
+/**
+ * This method outputs Excel sheet, with the following destination options specified in $dest parameter:
+ * 1) D - Excel workbook will be sent to the output as an XLSX file for user download, with "Content-disposition: attachment" header. File name should be specified in $fileName parameter. In case when it empty method will use template file/folder name. Missing ".xlsx" extension will be added.
+ * 2) I - Excel workbook is being send out with Content-disposition: inline. It works only with older versions of MSIE/MS Office. It's not recommended to use it. Go for "D" with properly specified filename instead.
+ * 3) F - Excel workbook will be saved as file with the name and path specified in $fileName parameter. If there's only file name, it will use current path so remember to chdir() to the location you need. If there's no $fileName, method will save workbook under temporary name. File name will be returned.
+ * 4) S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name. 
+ * Below are the examples of typical usage scenarios:
+ * @example $xlsx->Output('my_workbook.xlsx', 'D'); // user will see download prompt with the file named 'my_workbook.xlsx'
+ * @example $xlsx->Output('/var/files/my_workbook.xlsx', 'F'); // file will be saved on server
+ * @example $my_workbook = $xlsx->Output(); // variable $my_workbook will contain workbook file content. Usable when you need to make mail attachment, for example.
+ * 
+ * @param string $fileName (optional) File name. If not set, original template name will be used. Missing file extension (.xlsx) will be added automatically.
+ * @param char $dest (optional) Destination of method output. See description above.
+ *
+ * @return string with workbook file name when $dest="F" or string with workbook content when $dest="S". When $dest="I" or "D" it quits PHP with die(). 
+ */
+public function Output($fileName = "", $dest = "S") {
     
-    if(!$fileName || $dest == "I" || $dest == "D") {
+    if(!$fileName || in_array($dest, array("I", "D")) ) {
         $fileNameSrc = $fileName;
         $fileName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
-        $remove = true;
+        $remove = ($dest!=='F');
     }
     
     if(is_writable($fileName) || is_writable(dirname($fileName))) {
@@ -1456,20 +1480,30 @@ public function Output($fileName = "", $dest = "I") {
                 header('Content-Disposition: inline"');
             }
             if ($dest=="D"){
-                header('Content-Disposition: attachment; filename="' . basename($fileNameSrc) . '"');
+                $outFileName = ($fileNameSrc ? basename($fileNameSrc) : $this->defaultFileName);
+                if(!preg_match('/\.xlsx$/i', $outFileName))
+                    $outFileName .= '.xlsx';
+                header('Content-Disposition: attachment; filename="' . $outFileName . '"');
             }
             readfile($fileName); 
+            unlink($fileName);
+
             die();
+        case 'F':
+            $r = $fileName;
+            break;
         case "S":
-            return file_get_contents($fileName);
-        case "F": 
         default:
+            $r = file_get_contents($fileName);
             break;
     }
         
-    if(isset($remove)) {
-       unlink($fileName);
+    if($remove) {
+        unlink($fileName);
     }
+
+    return $r;
+
 }
 
 }
