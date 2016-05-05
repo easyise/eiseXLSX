@@ -144,7 +144,10 @@ public function __construct( $templatePath='' ) {
  * 
  * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
  * @param variant $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
- * @param string $t - if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator.
+ * @param string $t - if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator. 
+ * Possible values: 'n' - for numeric values like integer or real numbers;
+ *   's' (default) - for strings, but if string can be evaluated as number using is_numeric() PHP function, numeric value will be set;
+ *   'd' - for datetime values.
  *
  * @return string - cell data before new value is set (if any).
  */
@@ -196,6 +199,8 @@ public function data($cellAddress, $data = null, $t = "s"){
             unset($c->v[0]);
         } else { // we set received value
             unset($c->f[0]); // remove forumla
+            if(is_numeric($data))
+                $t = "n";
             switch($t){
                 case "s":
                     $this->updateSharedString($o_si, $data);
