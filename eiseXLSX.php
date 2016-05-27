@@ -199,7 +199,7 @@ public function data($cellAddress, $data = null, $t = "s"){
             unset($c->v[0]);
         } else { // we set received value
             unset($c->f[0]); // remove forumla
-            if(is_numeric($data))
+            if( is_numeric($data) && func_num_args()==2 ) // if default
                 $t = "n";
             switch($t){
                 case "s":
