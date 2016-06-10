@@ -1425,10 +1425,16 @@ protected function rmrf($dir){
  * 1) D - Excel workbook will be sent to the output as an XLSX file for user download, with "Content-disposition: attachment" header. File name should be specified in $fileName parameter. In case when it empty method will use template file/folder name. Missing ".xlsx" extension will be added.
  * 2) I - Excel workbook is being send out with Content-disposition: inline. It works only with older versions of MSIE/MS Office. It's not recommended to use it. Go for "D" with properly specified filename instead.
  * 3) F - Excel workbook will be saved as file with the name and path specified in $fileName parameter. If there's only file name, it will use current path so remember to chdir() to the location you need. If there's no $fileName, method will save workbook under temporary name. File name will be returned.
- * 4) S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name. 
+ * 4) S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name.
+ *
+ * There's some smart guess option added for $dest parameter: if you specify only $fileName - omitted $dest will be set to 'D'. If $fileName containes directory separators - omitted $dest will be set to 'F' 
+ *
  * Below are the examples of typical usage scenarios:
  * @example $xlsx->Output('my_workbook.xlsx', 'D'); // user will see download prompt with the file named 'my_workbook.xlsx'
+ * @example $xlsx->Output('my_workbook.xlsx'); // the same, user will see download prompt with the file named 'my_workbook.xlsx'
  * @example $xlsx->Output('/var/files/my_workbook.xlsx', 'F'); // file will be saved on server
+ * @example $xlsx->Output('my_workbook.xlsx', 'F'); // file will be saved at server in current working directory
+ * @example $xlsx->Output('/my_workbook.xlsx'); // file will be tried to save on server root
  * @example $my_workbook = $xlsx->Output(); // variable $my_workbook will contain workbook file content. Usable when you need to make mail attachment, for example.
  * 
  * @param string $fileName (optional) File name. If not set, original template name will be used. Missing file extension (.xlsx) will be added automatically.
@@ -1437,6 +1443,14 @@ protected function rmrf($dir){
  * @return string with workbook file name when $dest="F" or string with workbook content when $dest="S". When $dest="I" or "D" it quits PHP with die(). 
  */
 public function Output($fileName = "", $dest = "S") {
+
+    // if filename is set but destination is omitted, the conent will echoed with Content-disposition: attachment
+    if($fileName && func_num_args()===1)
+        $dest = 'D';
+
+    // if filename contains directory separators, the conent will be attempted to save
+    if(preg_match('/['.preg_quote('/\\', '/').']/', $fileName) && func_num_args()===1)
+        $dest = 'F';
     
     if(!$fileName || in_array($dest, array("I", "D")) ) {
         $fileNameSrc = $fileName;
