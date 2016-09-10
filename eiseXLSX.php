@@ -282,7 +282,7 @@ public function getDataValidationList($cellAddress){
  * Empty values are not returned. 
  * If range cannot be located, function returns FALSE.
  * 
- * @param $range string - cell range in normal format (like "A14:X14") or formula-based refrence ("Sheet 3!$Z15:$Y17").
+ * @param string $range - cell range in normal format (like "A14:X14") or formula-based refrence ("Sheet 3!$Z15:$Y17").
  * 
  * @return array of data obtained from range with R1C1 address as keys and values as they've been obtained with data() function. If range cannot be located, function returns FALSE.
  */
@@ -396,9 +396,16 @@ public function getRowCount(){
     return $lastRowIndex;
 }
 
+/**
+ * Fills cell at $cellAddress with color $fillColor or clears cell off any background color, if $fillColor is set to NULL, 0 or ''.
+ * If cell is not found or color string is wrongly specified, it throws an exception.
+ *
+ * @param string $cellAddress Cell address, both A1 and R1C1 address formats are acceptable.
+ * @param string $fillColor HTML-style color in Hex pairs, for example: #FFCC66. Should always start with hash.
+ *
+ * @return simpleXML object that represents specified cell.
+ */
 public function fill($cellAddress, $fillColor){
-    // cell address: A1/R1C1
-    // fillColor: HTML-style color in Hex pairs, for example: #FFCC66
     
     $fillColor = ($fillColor ? self::colorW3C2Excel($fillColor) : "");
     
@@ -407,7 +414,7 @@ public function fill($cellAddress, $fillColor){
     $c = &$this->locateCell($x, $y);
     
     if ($c===null){
-        throw new eiseXLSX_Exception('cannot apply fill - no sheet at '.$cellAddress);
+        throw new eiseXLSX_Exception('cannot apply fill - no cell at '.$cellAddress);
     }
     
     if ($fillColor){
@@ -469,6 +476,16 @@ public function fill($cellAddress, $fillColor){
     
 }
 
+/**
+ * This function returns fill color of cell located at $cellAddress. Color is returned as W3C hexadecimal value that starts with hash symbol.
+ * If cell is not found it throws an exception.
+ *
+ * WARNING: in current version this function doesn't take into account alfa channel information stored in first 'two bytes' of OpenXML color information string. It presumes that there's always 'FF' mask in alha channel (no transparency).
+ * 
+ * @param string $cellAddress Cell address, both A1 and R1C1 address formats are acceptable.
+ *
+ * @return string Color in W3C format.
+ */
 public function getFillColor($cellAddress){
 
     // locate cell, if no cell - throw exception
@@ -1191,14 +1208,36 @@ private static function index2letter($index){
     return $strLetter;
 }
 
-//returns XLSX color senternce basing on web's hex like #RRGGBB
-private function colorW3C2Excel($color){
+/**
+ * This static function returns OpenXML color value from HTML's hex value like #RRGGBB supplied with $color parameter. 
+ * If color code doesn't match W3C HTML format, it throws an exception. 
+ * eiseXLSX::colorExcel2W3C() function provides reverse color conversion.
+ *
+ * @param string $color Hexadecimal RGB value according to W3C HTML specification that starts with the hashtag, e.g. #AABBCC
+ *
+ * @return string OpenXML hexadecimal value that can be specified in <fgColor rgb=""> attribute (ARGB). 
+ *
+ * @example echo self::colorW3CExcel('#00CC99'); // output: 'FF00CC99'
+ */ 
+private static function colorW3C2Excel($color){
     if (!preg_match('/#[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}/i', $color))
         throw new eiseXLSX_Exception("bad W3C color format: {$color}"); 
     return strtoupper(preg_replace("/^(#)/", "FF", $color));
 }
-//returns W3C hex in #RRGGBB format basing on Excel
-private function colorExcel2W3C($color){
+
+/**
+ * This static function returns W3C color value like #RRGGBB from OpenXML color code supplied with $color parameter.
+ * If color code doesn't match OpenXML format, it throws an exception.
+ * WARNING: in current version this function doesn't take into account alfa channel information stored in first 'two bytes' of OpenXML color information string. It presumes that there's always 'FF' mask in alha channel (no transparency).
+ * eiseXLSX::colorW3CExcel() function provides reverse color conversion.
+ *
+ * @param string $color Hexadecimal RGB value according to W3C HTML specification that starts with the hashtag, e.g. #AABBCC
+ *
+ * @return string Hexadecimal value that can be specified in <fgColor rgb=""> attribute (ARGB). 
+ *
+ * @example echo self::colorExcel2W3C('FF00CC99'); // output: '#00CC99'
+ */ 
+private static function colorExcel2W3C($color){
     if (!preg_match('/[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}[0-9A-F]{2}/i', $color))
         throw new eiseXLSX_Exception("bad OpenXML color format: {$color}"); 
     return strtoupper(preg_replace("/^([0-9A-F]{2})/i", '#', $color));
