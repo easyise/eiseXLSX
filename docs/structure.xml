@@ -1,0 +1,524 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project title="API Documentation" version="v2.8.5">
+  <partials/>
+  <file path="eiseXLSX.php" generated-path="eiseXLSX.html" hash="0a7593baba79774be3119c8d9f3972f0" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+    <docblock line="0">
+      <description>eiseXLSX</description>
+      <long-description>XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.
+
+This class was designed for server-side manipulations with uploaded spreadsheets in Microsoft® Excel™ 2007-2011-2013 file format – OpenXML SpereadsheetML.
+
+Current version of this library allows to read user-uploaded file contents and to write data to preliminary uploaded template file and send it back to the user:
+* it allows to change existing cell data
+* clone rows and fill-in new rows with data
+* clone sheets within workbook, remove unnecessary sheets
+* colorization of cells.
+
+This library offers an easiest way to make Excel™-based EDI with PHP-based information systems, for data input and output.
+
+Users are no longer need to convert Excel™ spreadsheets to CSV and other formats, they can simply upload data to the website using their worksheets.
+
+You can use files received from users as your website’s output document templates with 100% match of cell formats, sheet layout, design, etc. With eiseXLSX you can stop wasting your time working on output documents layout – you can just ask your customer staff to prepare documents they’d like to see in XLSX format. Then you can put these files to the server and fill them with necessary data using PHP.
+
+Unlike other PHP libraries for XLSX files manipulation eiseXLSX is simple, compact and laconic. You don’t need to learn XLSX file format to operate with it. Just use only cell addresses in any formats (A1 and R1C1 are supported) and data from your website database. As simple as that.
+
+  Based on:
+
+  Simple XLSX [http://www.kirik.ws/simpleXLSX.html]</long-description>
+      <tag name="author" line="0" description="kirik [mail@kirik.ws]&#10;  @version 0.1&#10;&#10;  Developed under GNU General Public License, version 3: [http://www.gnu.org/licenses/lgpl.txt]"/>
+      <tag name="author" line="0" description="Ilya Eliseev [ie@e-ise.com]"/>
+      <tag name="uses" line="0" description="" link="SimpleXML"/>
+      <tag name="uses" line="0" description="" link="DOM"/>
+      <tag name="package" line="0" description="eiseXLSX [https://github.com/easyise/eiseXLSX]"/>
+      <tag name="copyright" line="0" description="(c) 2012-2016 Ilya S. Eliseev"/>
+      <tag name="license" line="0" description="GNU Public License [http://opensource.org/licenses/gpl-license.php]"/>
+      <tag name="version" line="0" description="1.6beta"/>
+    </docblock>
+    <class final="false" abstract="false" namespace="" line="51" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+      <extends/>
+      <name>eiseXLSX</name>
+      <full_name>\eiseXLSX</full_name>
+      <docblock line="51">
+        <description>The class that creates objects with Excel workbooks inside. Public class methods are allowing to make any declared manupulations with the workbook.</description>
+        <long-description></long-description>
+        <tag name="package" line="51" description="eiseXLSX [https://github.com/easyise/eiseXLSX]"/>
+      </docblock>
+      <property static="false" visibility="public" namespace="" line="76" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>$defaultFileName</name>
+        <full_name>\eiseXLSX::defaultFileName</full_name>
+        <default>'eiseXLSX.xlsx'</default>
+        <docblock line="76">
+          <description>Default file name for output</description>
+          <long-description></long-description>
+        </docblock>
+      </property>
+      <property static="true" visibility="public" namespace="" line="81" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>$arrIndexedColors</name>
+        <full_name>\eiseXLSX::arrIndexedColors</full_name>
+        <default>array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333')</default>
+        <docblock line="81">
+          <description>Indexed colors acoring to XLSX file standard</description>
+          <long-description></long-description>
+        </docblock>
+      </property>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="95" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>__construct</name>
+        <full_name>\eiseXLSX::__construct()</full_name>
+        <docblock line="95">
+          <description>The constructor. It reads Excel workbook supplied as the template or data source to read. It can be either XLSX file or unzipped one, into the directory speicfied in $templatePath parameter. Unzipping XLSX files will reduce your server CPU load ;).</description>
+          <long-description>Also it parses all XMLs inside the workbook and makes all the necessary preparations for future data read and manipulations.
+
+If $templatePath parameter is omitted it reads default template. If path's not found it throws an exception (object of eiseXLSX_Exception class).</long-description>
+          <tag name="category" line="95" description="Read / Write"/>
+          <tag name="param" line="95" description="&lt;p&gt;The path to Excel workbook file or directory.&lt;/p&gt;" type="string" variable="$templatePath">
+            <type>string</type>
+          </tag>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$templatePath</name>
+          <default>''</default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="197" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>data</name>
+        <full_name>\eiseXLSX::data()</full_name>
+        <docblock line="197">
+          <description>eiseXLSX::data() function reads or sets data for cell with specified $cellAddress. If parameter $data is omitted, function just returns current cell data. If $data contains something, function tries to set it.</description>
+          <long-description>Data types note:
+- strings are to be returned and assigned as strings
+- numeric values are to be returned and set as strings with numeric values in latin1 locale inside.
+- date/time values are to be returned and set as strings formatted as 'YYYY-MM-DD HH:MM:SS'</long-description>
+          <tag name="param" line="197" description="&lt;ul&gt;&#10;&lt;li&gt;both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: &quot;AI75&quot;, &quot;r10c25&quot;.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$cellAddress">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="197" description="&lt;ul&gt;&#10;&lt;li&gt;data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.&lt;/li&gt;&#10;&lt;/ul&gt;" type="mixed" variable="$data">
+            <type>mixed</type>
+          </tag>
+          <tag name="param" line="197" description="&lt;ul&gt;&#10;&lt;li&gt;if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator.&#10;Possible values: 'n' - for numeric values like integer or real numbers;&#10;'s' (default) - for strings, but if string can be evaluated as number using is_numeric() PHP function, numeric value will be set;&#10;'d' - for datetime values.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$t">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="197" description="- cell data before new value is set (if any)." type="string">
+            <type>string</type>
+          </tag>
+          <tag name="category" line="197" description="Sheet manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$cellAddress</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$data</name>
+          <default>null</default>
+          <type>mixed</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$t</name>
+          <default>"s"</default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="274" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>getDataValidationList</name>
+        <full_name>\eiseXLSX::getDataValidationList()</full_name>
+        <docblock line="274">
+          <description>This function returns contents of drop-down list for given cell, if Data Validation / List option is activated for given cell. If there's no list, this function returns NULL, if reference to drop-down list cell range is broken, it returns FALSE. Otherwise it returns associative array with origin cell addresses as keys and cell data as values. Function eiseXLSX::getDataByRange() (that uses eiseXLSX::data()) is used to obtain cell data.</description>
+          <long-description>eiseXLSX::getDataValidatioList() can be useful when you need to obtain contents of reference tables of spreadsheet fields when you try to import the workbook into the database.
+NOTE: This function supports only local cell range references, within current workbook. If requested cell takes drop-down list values from another workbook, function returns FALSE.
+NOTE: Function supports only single-row or single-columns references to drop-down cell range. Otherwise it returns FALSE.</long-description>
+          <tag name="param" line="274" description="&lt;ul&gt;&#10;&lt;li&gt;Cell address. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: &quot;AI75&quot;, &quot;r10c25&quot;.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$cellAddress">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="274" description="- NULL if there's no data validation, associative array of drop-down values with origin cell addresses as keys and FALSE in case of broken/invalid reference to drop-down cell range." type="mixed">
+            <type>mixed</type>
+          </tag>
+          <tag name="category" line="274" description="Sheet manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$cellAddress</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="336" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>getDataByRange</name>
+        <full_name>\eiseXLSX::getDataByRange()</full_name>
+        <docblock line="336">
+          <description>This function returns an array of data obtained from the specified $range. This range can be as well as formula-formatted (e.g. "Sheet 2!$A1:$B12") as normal particular range (like "B15:B50"). Cell list, range list and other range formats are NOT SUPPORTED (YET).</description>
+          <long-description>Reference sheets (if any) should exist in the same workbook as current sheet.
+Empty values are not returned.
+If range cannot be located, function returns FALSE.</long-description>
+          <tag name="param" line="336" description="&lt;ul&gt;&#10;&lt;li&gt;cell range in normal format (like &quot;A14:X14&quot;) or formula-based refrence (&quot;Sheet 3!$Z15:$Y17&quot;).&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$range">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="336" description="of data obtained from range with R1C1 address as keys and values as they've been obtained with data() function. If range cannot be located, function returns FALSE." type="array">
+            <type>array</type>
+          </tag>
+          <tag name="category" line="336" description="Sheet manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$range</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="true" visibility="public" namespace="" line="393" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>checkAddressInRange</name>
+        <full_name>\eiseXLSX::checkAddressInRange()</full_name>
+        <docblock line="393">
+          <description>checkAddressInRange() function checks whether given cell belong to specified cell address range.</description>
+          <long-description></long-description>
+          <tag name="param" line="393" description="&lt;ul&gt;&#10;&lt;li&gt;cell address to check. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: &quot;AI75&quot;, &quot;r10c25&quot;.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$adrNeedle">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="393" description="&lt;ul&gt;&#10;&lt;li&gt;cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell, cell range (cell1:cell2) and list of cells and ranges, space-separated. Case-insensitive. Examples: &quot;AI75:AJ86&quot;, &quot;r10c25:r1c25 &quot;, &quot;C168 AF113:AG116 AI113:AI116 L113:N116&quot;.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$adrHaystack">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="393" description="- true if cell belongs to the range, false otherwise" type="boolean">
+            <type>boolean</type>
+          </tag>
+          <tag name="category" line="393" description="Cell address routines"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$adrNeedle</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$adrHaystack</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="true" visibility="public" namespace="" line="422" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>getRangeArea</name>
+        <full_name>\eiseXLSX::getRangeArea()</full_name>
+        <docblock line="422">
+          <description>This function returns array of top-left and bottom-right coordinates of particular range area.</description>
+          <long-description></long-description>
+          <tag name="param" line="422" description="&lt;p&gt;string - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell or cell range (cell1:cell2). Case-insensitive. Examples: &quot;AI75:AJ86&quot;, &quot;r10c25:r1c25&quot;.&lt;/p&gt;" type="" variable="$range"/>
+          <tag name="return" line="422" description="- array(array($x_left, $x_right), array($y_top, $y_bottom)) where x and y are column and row number correspondingly." type="array">
+            <type>array</type>
+          </tag>
+          <tag name="category" line="422" description="Cell address routines"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$range</name>
+          <default></default>
+          <type/>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="443" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>getRowCount</name>
+        <full_name>\eiseXLSX::getRowCount()</full_name>
+        <docblock line="443">
+          <description>This method returns number of rows in active sheet.</description>
+          <long-description></long-description>
+          <tag name="return" line="443" description="- row number of the last row." type="integer">
+            <type>integer</type>
+          </tag>
+          <tag name="category" line="443" description="Sheet manipulations"/>
+        </docblock>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="463" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>fill</name>
+        <full_name>\eiseXLSX::fill()</full_name>
+        <docblock line="463">
+          <description>Fills cell at $cellAddress with color $fillColor or clears cell off any background color, if $fillColor is set to NULL, 0 or ''.</description>
+          <long-description>If cell is not found or color string is wrongly specified, it throws an exception.</long-description>
+          <tag name="param" line="463" description="&lt;p&gt;Cell address, both A1 and R1C1 address formats are acceptable.&lt;/p&gt;" type="string" variable="$cellAddress">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="463" description="&lt;p&gt;HTML-style color in Hex pairs, for example: #FFCC66. Should always start with hash.&lt;/p&gt;" type="string" variable="$fillColor">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="463" description="object that represents specified cell." type="\simpleXML">
+            <type>\simpleXML</type>
+          </tag>
+          <tag name="category" line="463" description="Cell decoration"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$cellAddress</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$fillColor</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="546" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>getFillColor</name>
+        <full_name>\eiseXLSX::getFillColor()</full_name>
+        <docblock line="546">
+          <description>This function returns fill color of cell located at $cellAddress. Color is returned as W3C hexadecimal value that starts with hash symbol.</description>
+          <long-description>If cell is not found it throws an exception.
+
+WARNING: in current version this function doesn't take into account alfa channel information stored in first 'two bytes' of OpenXML color information string. It presumes that there's always 'FF' mask in alha channel (no transparency).</long-description>
+          <tag name="param" line="546" description="&lt;p&gt;Cell address, both A1 and R1C1 address formats are acceptable.&lt;/p&gt;" type="string" variable="$cellAddress">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="546" description="Color in W3C format." type="string">
+            <type>string</type>
+          </tag>
+          <tag name="category" line="546" description="Cell decoration"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$cellAddress</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="625" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>cloneRow</name>
+        <full_name>\eiseXLSX::cloneRow()</full_name>
+        <docblock line="625">
+          <description>eiseXLSX::cloneRow() method clones row with number $ySrc to $yDest, other existing cells are moved down by one position.</description>
+          <long-description>All row contents and styles are simply copied from origin.
+It returns simpleXML object with cloned row.
+WARNING: In version 1.6 this method is not friendly to PrintAreas, it they exist and include cells below cloned one. You'll probalby receive 'Currupted file' message from Excel.
+WARNING: This function wasn't tested for cloning rows from down to up: it's recommended to use it only if $ySrc &lt; $yDest, i.e. when your origin row is upper than destination.</long-description>
+          <tag name="param" line="625" description="&lt;ul&gt;&#10;&lt;li&gt;row number of origin. Starts from 1, as user can see on Excel screen&lt;/li&gt;&#10;&lt;/ul&gt;" type="integer" variable="$ySrc">
+            <type>integer</type>
+          </tag>
+          <tag name="param" line="625" description="&lt;ul&gt;&#10;&lt;li&gt;destination row number.&lt;/li&gt;&#10;&lt;/ul&gt;" type="integer" variable="$yDest">
+            <type>integer</type>
+          </tag>
+          <tag name="return" line="625" description="simpleXML object with newly added row" type="object">
+            <type>object</type>
+          </tag>
+          <tag name="category" line="625" description="Sheet manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$ySrc</name>
+          <default></default>
+          <type>integer</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$yDest</name>
+          <default></default>
+          <type>integer</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="665" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>findSheetByName</name>
+        <full_name>\eiseXLSX::findSheetByName()</full_name>
+        <docblock line="665">
+          <description>This function returns sheet ID as specified in sheetId attribute of the officeDocument.</description>
+          <long-description></long-description>
+          <tag name="param" line="665" description="&lt;p&gt;string - sheet name to find&lt;/p&gt;" type="" variable="$name"/>
+          <tag name="return" line="665" description="- sheet ID if sheet found in current workbook, otherwise false." type="string">
+            <type>string</type>
+          </tag>
+          <tag name="category" line="665" description="Workbook manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$name</name>
+          <default></default>
+          <type/>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="688" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>selectSheet</name>
+        <full_name>\eiseXLSX::selectSheet()</full_name>
+        <docblock line="688">
+          <description>Function sets sheet with specified $id as active. Internally, $this-&gt;_cSheet becomes a sheet with $id.</description>
+          <long-description>If such sheet cannot be located in the workbook, function throws an exception.
+NOTICE: sheet numbers (Id's) are started from 1 in speadSheetML.</long-description>
+          <tag name="param" line="688" description="&lt;ul&gt;&#10;&lt;li&gt;sheet ID as specified in sheetId attribute of the officeDocument.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$id">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="688" description="SimpleXML object that represents the sheet." type="object">
+            <type>object</type>
+          </tag>
+          <tag name="category" line="688" description="Workbook manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$id</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="707" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>cloneSheet</name>
+        <full_name>\eiseXLSX::cloneSheet()</full_name>
+        <docblock line="707">
+          <description>This method clones original sheet with sheetId supplied with $originSheetId parameter into new one labeled as $newSheetName
+New sheet doesn't become active. eiseXLSX::cloneSheet() returns sheetId of newly created sheet.</description>
+          <long-description></long-description>
+          <tag name="param" line="707" description="&lt;ul&gt;&#10;&lt;li&gt;sheetId of origin sheet&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$originSheetId">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="707" description="&lt;ul&gt;&#10;&lt;li&gt;new sheet label, if not set eiseXLSX sets 'Sheet &lt;newSheetId&gt;' as label.&lt;/li&gt;&#10;&lt;/ul&gt;" type="string" variable="$newSheetName">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="707" description="$newSheetId - id of sheet added to the workbook." type="string">
+            <type>string</type>
+          </tag>
+          <tag name="category" line="707" description="Workbook manipulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$originSheetId</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$newSheetName</name>
+          <default>''</default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="780" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>renameSheet</name>
+        <full_name>\eiseXLSX::renameSheet()</full_name>
+        <docblock line="780">
+          <description>This method changes sheet tab label for specified sheet with $sheetId to $newName.</description>
+          <long-description></long-description>
+          <tag name="param" line="780" description="&lt;p&gt;sheetId of the sheet to be renamed&lt;/p&gt;" type="string" variable="$sheetId">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="780" description="&lt;p&gt;new sheet tab label&lt;/p&gt;" type="string" variable="$newName">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="780" description="" type="null">
+            <type>null</type>
+          </tag>
+          <tag name="category" line="780" description="Workbook manupulations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$sheetId</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$newName</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="807" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>removeSheet</name>
+        <full_name>\eiseXLSX::removeSheet()</full_name>
+        <docblock line="807">
+          <description>removeSheet() method deletes the sheet specified with $id parameter.</description>
+          <long-description></long-description>
+          <tag name="param" line="807" description="&lt;p&gt;sheetId of target sheet&lt;/p&gt;" type="string" variable="$id">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="807" description="" type="null">
+            <type>null</type>
+          </tag>
+          <tag name="category" line="807" description="Workbook Manupilations"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$id</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="true" visibility="public" namespace="" line="1288" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>cellAddress</name>
+        <full_name>\eiseXLSX::cellAddress()</full_name>
+        <docblock line="1288">
+          <description>Receives cell address in R1C1 or A1 format and returns address variations as array.</description>
+          <long-description>Array members are: abscissa, ordinate, A1 and R1C1 -formatted addresses.</long-description>
+          <tag name="param" line="1288" description="&lt;p&gt;both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: &quot;AI75&quot;, &quot;r10c25&quot;.&lt;/p&gt;" type="string" variable="$cellAddress">
+            <type>string</type>
+          </tag>
+          <tag name="return" line="1288" description="`[ $x, $y, $a1, $r1c1 ]`:&#10;* $x - column number (starting from 1)&#10;* $y - row number (starting from 1)&#10;* $a1 - cell address in A1 format. &quot;A&quot; in capital case.&#10;* $r1c1 - cell address in R1C1. &quot;R&quot; and &quot;C&quot; are capital too." type="array">
+            <type>array</type>
+          </tag>
+          <tag name="category" line="1288" description="Cell address routines"/>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$cellAddress</name>
+          <default></default>
+          <type>string</type>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="1607" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>Output</name>
+        <full_name>\eiseXLSX::Output()</full_name>
+        <docblock line="1607">
+          <description>This method outputs Excel sheet, with the following destination options specified in $dest parameter:</description>
+          <long-description>1. D - Excel workbook will be sent to the output as an XLSX file for user download, with "Content-disposition: attachment" header. File name should be specified in $fileName parameter. In case when it empty method will use template file/folder name. Missing ".xlsx" extension will be added.
+2. I - Excel workbook is being send out with Content-disposition: inline. It works only with older versions of MSIE/MS Office. It's not recommended to use it. Go for "D" with properly specified filename instead.
+3. F - Excel workbook will be saved as file with the name and path specified in $fileName parameter. If there's only file name, it will use current path so remember to chdir() to the location you need. If there's no $fileName, method will save workbook under temporary name. File name will be returned.
+4. S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name.
+
+There's some smart guess option added for $dest parameter: if you specify only $fileName - omitted $dest will be set to 'D'. If $fileName containes directory separators - omitted $dest will be set to 'F'
+
+Below are the examples of typical usage scenarios:
+* `$xlsx-&gt;Output('my_workbook.xlsx', 'D');` - user will see download prompt with the file named 'my_workbook.xlsx'
+* `$xlsx-&gt;Output('my_workbook.xlsx');` - the same, user will see download prompt with the file named 'my_workbook.xlsx'
+* `$xlsx-&gt;Output('/var/files/my_workbook.xlsx', 'F');` - file will be saved on server
+* `$xlsx-&gt;Output('my_workbook.xlsx', 'F');` - file will be saved at server in current working directory
+* `$xlsx-&gt;Output('/my_workbook.xlsx');` - file will be tried to save on server root
+* `$my_workbook = $xlsx-&gt;Output();` - variable $my_workbook will contain workbook file content. Usable when you need to make mail attachment, for example.</long-description>
+          <tag name="param" line="1607" description="&lt;p&gt;(optional) File name. If not set, original template name will be used. Missing file extension (.xlsx) will be added automatically.&lt;/p&gt;" type="string" variable="$fileName">
+            <type>string</type>
+          </tag>
+          <tag name="param" line="1607" description="&lt;p&gt;(optional) Destination of method output. See description above.&lt;/p&gt;" type="string" variable="$dest">
+            <type>string</type>
+          </tag>
+          <tag name="category" line="1607" description="Read / Write"/>
+          <tag name="return" line="1607" description="Workbook file name when $dest=&quot;F&quot; or string with workbook content when $dest=&quot;S&quot;. When $dest=&quot;I&quot; or &quot;D&quot; it quits PHP with die()." type="string">
+            <type>string</type>
+          </tag>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$fileName</name>
+          <default>""</default>
+          <type>string</type>
+        </argument>
+        <argument line="0" by_reference="false">
+          <name>$dest</name>
+          <default>"S"</default>
+          <type>string</type>
+        </argument>
+      </method>
+    </class>
+    <class final="false" abstract="false" namespace="" line="1696" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+      <extends>\Exception</extends>
+      <name>eiseXLSX_Exception</name>
+      <full_name>\eiseXLSX_Exception</full_name>
+      <docblock line="1696">
+        <description>Throwable class for exceptions.</description>
+        <long-description></long-description>
+        <tag name="package" line="1696" description="eiseXLSX [https://github.com/easyise/eiseXLSX]"/>
+      </docblock>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="1700" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>__construct</name>
+        <full_name>\eiseXLSX_Exception::__construct()</full_name>
+        <docblock line="1700">
+          <description>Class constructor, updates message and prints debug backtrace.</description>
+          <long-description></long-description>
+        </docblock>
+        <argument line="0" by_reference="false">
+          <name>$msg</name>
+          <default></default>
+          <type/>
+        </argument>
+      </method>
+      <method final="false" abstract="false" static="false" visibility="public" namespace="" line="1709" package="eiseXLSX [https://github.com/easyise/eiseXLSX]">
+        <name>__toString</name>
+        <full_name>\eiseXLSX_Exception::__toString()</full_name>
+        <docblock line="1709">
+          <description>Allows to get message directly from the caught exception</description>
+          <long-description></long-description>
+        </docblock>
+      </method>
+    </class>
+    <parse_markers>
+      <error line="1719" code="PPC:ERR-50005">No summary for class \eiseXLSX_FS</error>
+      <error line="1700" code="PPC:ERR-50015">Argument $msg is missing from the Docblock of __construct</error>
+    </parse_markers>
+    <source>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</source>
+  </file>
+  <package name="eiseXLSX [https://github.com/easyise/eiseXLSX]" full_name="eiseXLSX [https://github.com/easyise/eiseXLSX]"/>
+  <package name="global" full_name="global"/>
+  <namespace name="global" full_name="global"/>
+  <deprecated count="0"/>
+</project>

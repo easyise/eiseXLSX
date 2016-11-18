@@ -2,30 +2,36 @@
 /* $Id: zip.lib.php,v 2.4 2004/11/03 13:56:52 garvinhicking Exp $ */
 // vim: expandtab sw=4 ts=4 sts=4:
 /**
-* Zip file creation class.
-* Makes zip files.
-*
-* Based on :
-*
-*  <a href="http://www.zend.com/codex.php?id=535&single=1
-" title="http://www.zend.com/codex.php?id=535&single=1
-" rel="nofollow">http://www.zend.com/codex.php?id=535&single=1
-</a> *  By Eric Mueller <eric@themepark.com>
-*
-*  <a href="http://www.zend.com/codex.php?id=470&single=1
-" title="http://www.zend.com/codex.php?id=470&single=1
-" rel="nofollow">http://www.zend.com/codex.php?id=470&single=1
-</a> *  by Denis125 <webmaster@atlant.ru>
-*
-*  a patch from Peter Listiak <mlady@users.sourceforge.net> for last modified
-*  date and time of the compressed file
-*
-* Official ZIP file format: <a href="http://www.pkware.com/appnote.txt
-" title="http://www.pkware.com/appnote.txt
-" rel="nofollow">http://www.pkware.com/appnote.txt
-</a> *
-* @access  public
-*/
+ * @ignore
+ *
+ * Zip file creation class.
+ * Makes zip files.
+ *
+ * Based on :
+ *
+ *  <a href="http://www.zend.com/codex.php?id=535&single=1
+ * " title="http://www.zend.com/codex.php?id=535&single=1
+ * " rel="nofollow">http://www.zend.com/codex.php?id=535&single=1
+ * </a> *  By Eric Mueller <eric@themepark.com>
+ *
+ *  <a href="http://www.zend.com/codex.php?id=470&single=1
+ * " title="http://www.zend.com/codex.php?id=470&single=1
+ * " rel="nofollow">http://www.zend.com/codex.php?id=470&single=1
+ * </a> *  by Denis125 <webmaster@atlant.ru>
+ *
+ *  a patch from Peter Listiak <mlady@users.sourceforge.net> for last modified
+ *  date and time of the compressed file
+ *
+ * Official ZIP file format: <a href="http://www.pkware.com/appnote.txt
+ * " title="http://www.pkware.com/appnote.txt
+ * " rel="nofollow">http://www.pkware.com/appnote.txt
+ * </a> *
+ * @access  public
+ */
+
+/**
+ * @ignore
+ */
 class zipfile
 {
     /**

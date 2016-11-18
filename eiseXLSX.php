@@ -1,56 +1,97 @@
 <?php
 /**
- * eiseXLSX class
+ * eiseXLSX
  *   
- *   XLSX file format handling class (Microsoft Office 2007+, spreadsheetML format).
- *   Best at:
- *    - generating filled-in workbook basing on a pre-loaded template
- *    - saving workbook from a server as file
- *    - reading data from user-uploaded file
+ * XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.
+ *
+ * This class was designed for server-side manipulations with uploaded spreadsheets in Microsoft® Excel™ 2007-2011-2013 file format – OpenXML SpereadsheetML.
+ *
+ * Current version of this library allows to read user-uploaded file contents and to write data to preliminary uploaded template file and send it back to the user:
+ * * it allows to change existing cell data
+ * * clone rows and fill-in new rows with data
+ * * clone sheets within workbook, remove unnecessary sheets
+ * * colorization of cells.
+ *
+ * This library offers an easiest way to make Excel™-based EDI with PHP-based information systems, for data input and output.
+ * 
+ * Users are no longer need to convert Excel™ spreadsheets to CSV and other formats, they can simply upload data to the website using their worksheets.
+ * 
+ * You can use files received from users as your website’s output document templates with 100% match of cell formats, sheet layout, design, etc. With eiseXLSX you can stop wasting your time working on output documents layout – you can just ask your customer staff to prepare documents they’d like to see in XLSX format. Then you can put these files to the server and fill them with necessary data using PHP.
+ * 
+ * Unlike other PHP libraries for XLSX files manipulation eiseXLSX is simple, compact and laconic. You don’t need to learn XLSX file format to operate with it. Just use only cell addresses in any formats (A1 and R1C1 are supported) and data from your website database. As simple as that.
  *   
  *   Based on:
  *
- *    * Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
- *    * @author kirik [mail@kirik.ws]
- *    * @version 0.1
- *    * 
- *    * Developed under GNU General Public License, version 3:
- *    * http://www.gnu.org/licenses/lgpl.txt
+ *   Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
+ *   @author kirik [mail@kirik.ws]
+ *   @version 0.1
+ *    
+ *   Developed under GNU General Public License, version 3: [http://www.gnu.org/licenses/lgpl.txt]
+ *    
  *
  * 
  *
  * @uses SimpleXML
  * @uses DOM
  *
- * @package eiseXLSX (https://github.com/easyise/eiseXLSX)
+ * @package eiseXLSX [https://github.com/easyise/eiseXLSX]
  *   
- * @author Ilya Eliseev (ie@e-ise.com)
- * @copyright (c) 2012-2015 Ilya S. Eliseev
+ * @author Ilya Eliseev [ie@e-ise.com]
+ * @copyright (c) 2012-2016 Ilya S. Eliseev
  *
- * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @license GNU Public License [http://opensource.org/licenses/gpl-license.php] 
  *
  * @version 1.6beta
  *
  */
+
+/**
+ * The class that creates objects with Excel workbooks inside. Public class methods are allowing to make any declared manupulations with the workbook.
+ */
 class eiseXLSX {
 
-
+/** @ignore */
 const DS = DIRECTORY_SEPARATOR;
+/** @ignore */
 const Date_Bias = 25569; // number of days between Excel and UNIX epoch
+/** @ignore */
 const VERSION = '1.6';
+/** @ignore */
 const TPL_DIR = 'templates';
 
-// parsed templates
+/** @ignore */
 private $_parsed = array();
+/** @ignore */
 private $arrXMLs = array(); // all XML files
+/** @ignore */
 private $arrSheets = array(); // all sheets
+/** @ignore */
 private $arrSheetPath = array(); // all paths to sheets
+/** @ignore */
 private $_cSheet; // current sheet
 
+/** 
+ * Default file name for output
+ */
 public $defaultFileName = 'eiseXLSX.xlsx';
 
+/**
+ * Indexed colors acoring to XLSX file standard
+ */
 static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333');
 
+
+/**
+ * The constructor. It reads Excel workbook supplied as the template or data source to read. It can be either XLSX file or unzipped one, into the directory speicfied in $templatePath parameter. Unzipping XLSX files will reduce your server CPU load ;).
+ *
+ * Also it parses all XMLs inside the workbook and makes all the necessary preparations for future data read and manipulations.
+ * 
+ * If $templatePath parameter is omitted it reads default template. If path's not found it throws an exception (object of eiseXLSX_Exception class).
+ *
+ * @category Read / Write
+ * 
+ * @param string $templatePath The path to Excel workbook file or directory.
+ */
 public function __construct( $templatePath='' ) {
 
     if(!$templatePath){
@@ -143,13 +184,15 @@ public function __construct( $templatePath='' ) {
  * - date/time values are to be returned and set as strings formatted as 'YYYY-MM-DD HH:MM:SS'
  * 
  * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
- * @param variant $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
+ * @param mixed $data - data to set. If not set at function call, function just returns data. If set, function sets this data for given cell.
  * @param string $t - if omitted eiseXLSX accepts the data as string and put contents to sharedStrings.xml. Otherwise it tries to re-format date as seconds or number as real one with period as decimal separator. 
  * Possible values: 'n' - for numeric values like integer or real numbers;
  *   's' (default) - for strings, but if string can be evaluated as number using is_numeric() PHP function, numeric value will be set;
  *   'd' - for datetime values.
  *
  * @return string - cell data before new value is set (if any).
+ *
+ * @category Sheet manipulations
  */
 public function data($cellAddress, $data = null, $t = "s"){
     
@@ -224,7 +267,9 @@ public function data($cellAddress, $data = null, $t = "s"){
  *
  * @param string $cellAddress - Cell address. Both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25".
  *
- * @return variant - NULL if there's no data validation, associative array of drop-down values with origin cell addresses as keys and FALSE in case of broken/invalid reference to drop-down cell range.
+ * @return mixed - NULL if there's no data validation, associative array of drop-down values with origin cell addresses as keys and FALSE in case of broken/invalid reference to drop-down cell range.
+ *
+ * @category Sheet manipulations
  */
 public function getDataValidationList($cellAddress){
 
@@ -285,6 +330,8 @@ public function getDataValidationList($cellAddress){
  * @param string $range - cell range in normal format (like "A14:X14") or formula-based refrence ("Sheet 3!$Z15:$Y17").
  * 
  * @return array of data obtained from range with R1C1 address as keys and values as they've been obtained with data() function. If range cannot be located, function returns FALSE.
+ *
+ * @category Sheet manipulations
  */
 public function getDataByRange($range){
 
@@ -340,6 +387,8 @@ public function getDataByRange($range){
  * @param string $adrHaystack - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell, cell range (cell1:cell2) and list of cells and ranges, space-separated. Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25 ", "C168 AF113:AG116 AI113:AI116 L113:N116".
  *
  * @return boolean - true if cell belongs to the range, false otherwise
+ *
+ * @category Cell address routines
  */
 public static function checkAddressInRange($adrNeedle, $adrHaystack){
 
@@ -367,6 +416,8 @@ public static function checkAddressInRange($adrNeedle, $adrHaystack){
  * @param $range string - cell address range. Both R1C1 and A1 address formats are acceptable. Can be as single cell or cell range (cell1:cell2). Case-insensitive. Examples: "AI75:AJ86", "r10c25:r1c25".
  *
  * @return array - array(array($x_left, $x_right), array($y_top, $y_bottom)) where x and y are column and row number correspondingly.
+ *
+ * @category Cell address routines
  */
 public static function getRangeArea($range){
 
@@ -386,6 +437,8 @@ public static function getRangeArea($range){
  * This method returns number of rows in active sheet.
  *
  * @return int - row number of the last row.
+ *
+ * @category Sheet manipulations
  */
 public function getRowCount(){
     $lastRowIndex = 1;
@@ -404,6 +457,8 @@ public function getRowCount(){
  * @param string $fillColor HTML-style color in Hex pairs, for example: #FFCC66. Should always start with hash.
  *
  * @return simpleXML object that represents specified cell.
+ *
+ * @category Cell decoration
  */
 public function fill($cellAddress, $fillColor){
     
@@ -485,6 +540,8 @@ public function fill($cellAddress, $fillColor){
  * @param string $cellAddress Cell address, both A1 and R1C1 address formats are acceptable.
  *
  * @return string Color in W3C format.
+ *
+ * @category Cell decoration
  */
 public function getFillColor($cellAddress){
 
@@ -505,7 +562,7 @@ public function getFillColor($cellAddress){
             return $fgColor["rgb"];
         else {
             if ($fgColor['theme']){
-                return $this->getThemeColor($fgColor['theme'], $fgColor['tint']);
+                return $this->getThemeColor($fgColor['theme']);
             } else if($fgColor["indexed"]){
                 return self::colorExcel2W3C(self::$arrIndexedColors[(int)$fgColor["indexed"]]);
             }
@@ -523,7 +580,15 @@ public function getFillColor($cellAddress){
 
 }
 
-function getThemeColor($theme, $tint){
+/**
+ * This function returns SRGB color value from theme XML file basing on supplied index value with $theme parameter.
+ *
+ * @param string $theme Theme index
+ *
+ * @return hexadecimal SRGB value that correspond given theme index, starting with hash (#) symbol.
+ * @ignore
+ */
+protected function getThemeColor($theme){
     $ixScheme = 0;
     foreach($this->theme->children("a", true)->themeElements[0]->clrScheme[0] as $ix=>$scheme){
         if ((int)$theme==$ixScheme){
@@ -537,7 +602,6 @@ function getThemeColor($theme, $tint){
                         return '#'.$domch->getAttribute("lastClr");
                 }
             }
-            echo htmlspecialchars($scheme[0]->asXML());
             break;
         }
         $ixScheme++;
@@ -555,6 +619,8 @@ function getThemeColor($theme, $tint){
  * @param int $yDest - destination row number.
  *
  * @return object simpleXML object with newly added row
+ *
+ * @category Sheet manipulations
  */
 public function cloneRow($ySrc, $yDest){
     
@@ -593,6 +659,8 @@ public function cloneRow($ySrc, $yDest){
  * @param $name string - sheet name to find
  *
  * @return string - sheet ID if sheet found in current workbook, otherwise false.
+ *
+ * @category Workbook manipulations
  */
 public function findSheetByName($name){
     
@@ -614,6 +682,8 @@ public function findSheetByName($name){
  * @param string $id - sheet ID as specified in sheetId attribute of the officeDocument.
  *
  * @return object SimpleXML object that represents the sheet.
+ *
+ * @category Workbook manipulations
  */
 public function selectSheet($id) {
     if(!isset($this->arrSheets[$id])) {
@@ -631,6 +701,8 @@ public function selectSheet($id) {
  * @param string $newSheetName - new sheet label, if not set eiseXLSX sets 'Sheet <newSheetId>' as label.
  * 
  * @return string $newSheetId - id of sheet added to the workbook.
+ *
+ * @category Workbook manipulations
  */
 public function cloneSheet($originSheetId, $newSheetName = ''){
 
@@ -695,6 +767,16 @@ public function cloneSheet($originSheetId, $newSheetName = ''){
 
 }
 
+/**
+ * This method changes sheet tab label for specified sheet with $sheetId to $newName.
+ *
+ * @param string $sheetId sheetId of the sheet to be renamed
+ * @param string $newName new sheet tab label
+ * 
+ * @return null
+ *
+ * @category Workbook manupulations
+ */
 public function renameSheet($sheetId, $newName){
 
     // if target sheet cannot be located, we throw an exception
@@ -712,6 +794,16 @@ public function renameSheet($sheetId, $newName){
     $this->updateAppXML();
 }
 
+
+/**
+ * removeSheet() method deletes the sheet specified with $id parameter.
+ *
+ * @param string $id sheetId of target sheet
+ *
+ * @return null
+ *
+ * @category Workbook Manupilations
+ */
 public function removeSheet($id) {
     
     $sheetXMLFileName = $this->arrSheetPath[(string)$id];
@@ -769,6 +861,9 @@ public function removeSheet($id) {
 /**********************************************/
 // XLSX internal file structure manupulation
 /**********************************************/
+/**
+ * @ignore
+ */
 protected function getPathByRelTarget($relFilePath, $targetPath){
     
     // get directory path of rel file
@@ -797,6 +892,7 @@ protected function getPathByRelTarget($relFilePath, $targetPath){
     return implode("/", $arrPath);
 }
 
+/** @ignore  */
 protected function getRelFilePath($xmlPath){
     return dirname($xmlPath)."/_rels".str_replace(dirname($xmlPath), "", $xmlPath).".rels";
 }
@@ -805,6 +901,7 @@ protected function getRelFilePath($xmlPath){
 /**********************************************/
 // sheet data manipulation
 /**********************************************/
+/** @ignore  */
 private function updateSharedString($o_si, $data){
     
     $dom_si = dom_import_simplexml($o_si);
@@ -841,6 +938,7 @@ private function updateSharedString($o_si, $data){
  *
  * @return string - cell data converted to appropriate format.
  */
+/** @ignore  */
 private function formatDataRead($style, $data){
     // get style tag
     if ((string)$style=="")
@@ -877,6 +975,7 @@ private function formatDataRead($style, $data){
     }
 }
 
+/** @ignore  */
 private function addSharedString(&$oCell){
 
     $ssIndex = count($this->sharedStrings->si);
@@ -896,11 +995,12 @@ private function addSharedString(&$oCell){
 
 /**
  * This method converts datetime to Excel format, thanks to Excel::Writer::XLSX::Worksheet.pm (perl).
- * Contributed by gibus (https://github.com/gibus).
+ * Contributed by gibus [https://github.com/gibus].
  *
  * @param string $date_input String value of data to be set. Should be in YYYY-MM-DD[ hh:mm:ss] format.
  *
  * @return number Value in Excel format, ready to be saved in the cell.
+ * @ignore
  */
 private function convertDateTime($date_input) {  
     $days    = 0;    # Number of days since epoch
@@ -960,10 +1060,11 @@ private function convertDateTime($date_input) {
  * This method formats data for writing and actually writes the data into cell. It doesn't deal with 's' (text) data that stored in sharedStrings.xml.
  *
  * @param string $type Data type. 'd' - datetime string, all other - the number format.
- * @param variant $data Data to be set. Date/time values should be passed as strings like 'YYYY-MM-DD[ hh:mm:ss]'.
+ * @param mixed $data Data to be set. Date/time values should be passed as strings like 'YYYY-MM-DD[ hh:mm:ss]'.
  * @param object $c SimpleXML object that represents <c> element of current sheet*.xml.
  *
  * @return nothing.
+ * @ignore
  */
 private function formatDataWrite($type, $data, $c){
     
@@ -980,6 +1081,7 @@ private function formatDataWrite($type, $data, $c){
     }
 }
 
+/** @ignore  */
 private function locateCell($x, $y){
     // locates <c> simpleXMLElement and returns it
     
@@ -1004,6 +1106,7 @@ private function locateCell($x, $y){
     return null;
 }
 
+/** @ignore  */
 private function addCell($x, $y){
     
     $oValue = null;
@@ -1021,6 +1124,7 @@ private function addCell($x, $y){
     
 }
 
+/** @ignore  */
 private function locateRow($y){
     //locates <row> tag with r="$y"
     foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
@@ -1031,6 +1135,7 @@ private function locateRow($y){
     return null;
 }
 
+/** @ignore  */
 private function addRow($y, $oRow){
     // adds row at position and shifts down all the rows below
     
@@ -1040,6 +1145,7 @@ private function addRow($y, $oRow){
     
 }
 
+/** @ignore  */
 private function shiftDownMergedCells($yStart, $yOrigin = null){
     
     if (count($this->_cSheet->mergeCells->mergeCell)==0)
@@ -1075,6 +1181,7 @@ private function shiftDownMergedCells($yStart, $yOrigin = null){
     
 }
 
+/** @ignore  */
 private function insertElementByPosition($position, $oInsert, $oParent){
     
     $domParent = dom_import_simplexml($oParent);
@@ -1124,6 +1231,7 @@ private function insertElementByPosition($position, $oInsert, $oParent){
     
 }
 
+/** @ignore  */
 private function getElementPosition($domXLSXElement, $ix){
     
     if (count($domXLSXElement->attributes)!=0)
@@ -1143,6 +1251,7 @@ private function getElementPosition($domXLSXElement, $ix){
     
 }
 
+/** @ignore  */
 private function getRow($y){
     $oRow = null;
     foreach($this->_cSheet->sheetData->row as $ixRow=>$row){
@@ -1161,15 +1270,19 @@ private function getRow($y){
 }
 
 /**
- * This function receives cell address in R1C1 or A1 format and returns address variations as array of: abscissa, ordinate, A1 and R1C1 -formatted addresses.
- * 
- * @param string $cellAddress - both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ * Receives cell address in R1C1 or A1 format and returns address variations as array.
  *
- * @return array - array($x, $y, $a1, $r1c1): 
- *  $x - column number (starting from 1)
- *  $y - row number (starting from 1)
- *  $a1 - cell address in A1 format. "A" in capital case.
- *  $r1c1 - cell address in R1C1. "R" and "C" are capital too.
+ * Array members are: abscissa, ordinate, A1 and R1C1 -formatted addresses.
+ * 
+ * @param string $cellAddress both R1C1 and A1 address formats are acceptable. Case-insensitive. Examples: "AI75", "r10c25". 
+ *
+ * @return array `[ $x, $y, $a1, $r1c1 ]`: 
+ * * $x - column number (starting from 1)
+ * * $y - row number (starting from 1)
+ * * $a1 - cell address in A1 format. "A" in capital case.
+ * * $r1c1 - cell address in R1C1. "R" and "C" are capital too.
+ *
+ * @category Cell address routines
  *
  */
 public static function cellAddress($cellAddress){
@@ -1190,10 +1303,7 @@ public static function cellAddress($cellAddress){
     throw new eiseXLSX_Exception("invalid cell address: {$cellAddress}");
 }
 
-/**
- * 
- *
- */
+/** @ignore */
 private static function index2letter($index){
     $nLength = ord("Z")-ord("A")+1;
     $strLetter = "";
@@ -1209,6 +1319,8 @@ private static function index2letter($index){
 }
 
 /**
+ * @ignore 
+ *
  * This static function returns OpenXML color value from HTML's hex value like #RRGGBB supplied with $color parameter. 
  * If color code doesn't match W3C HTML format, it throws an exception. 
  * eiseXLSX::colorExcel2W3C() function provides reverse color conversion.
@@ -1226,6 +1338,9 @@ private static function colorW3C2Excel($color){
 }
 
 /**
+ *
+ * @ignore
+ *
  * This static function returns W3C color value like #RRGGBB from OpenXML color code supplied with $color parameter.
  * If color code doesn't match OpenXML format, it throws an exception.
  * WARNING: in current version this function doesn't take into account alfa channel information stored in first 'two bytes' of OpenXML color information string. It presumes that there's always 'FF' mask in alha channel (no transparency).
@@ -1243,6 +1358,7 @@ private static function colorExcel2W3C($color){
     return strtoupper(preg_replace("/^([0-9A-F]{2})/i", '#', $color));
 }
 
+/** @ignore */
 private function letter2index($strLetter){
     $x = 0;
     $nLength = ord("Z")-ord("A")+1;
@@ -1256,7 +1372,7 @@ private function letter2index($strLetter){
     return $x;
 }
 
-
+/** @ignore */
 private function updateWorkbookLinks(){
     
     //removing activeTab attribute!
@@ -1347,6 +1463,7 @@ private function updateWorkbookLinks(){
         
 }
 
+/** @ignore */
 private function updateAppXML(){
 
     // update app.xml
@@ -1379,6 +1496,7 @@ private function updateAppXML(){
 
 }
 
+/** @ignore */
 private function renameFile($oldName, $newName){
     $this->arrXMLs[$newName] = $this->arrXMLs[$oldName];
     unset($this->arrXMLs[$oldName]);
@@ -1391,6 +1509,7 @@ private function renameFile($oldName, $newName){
     
 }
 
+/** @ignore */
 public function unzipToDirectory($zipFilePath, $targetDirName){
 
     if (file_exists($targetDirName)){
@@ -1427,6 +1546,7 @@ public function unzipToDirectory($zipFilePath, $targetDirName){
 
 }
 
+/** @ignore */
 private function unzipToMemory($zipFilePath){
 
     $targetDirName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
@@ -1442,7 +1562,7 @@ private function unzipToMemory($zipFilePath){
     
 }
 
-// deletes directory recursively, like rm -rf
+/** @ignore deletes directory recursively, like rm -rf */
 protected function rmrf($dir){
     
     if(is_dir($dir)){
@@ -1461,25 +1581,28 @@ protected function rmrf($dir){
 
 /**
  * This method outputs Excel sheet, with the following destination options specified in $dest parameter:
- * 1) D - Excel workbook will be sent to the output as an XLSX file for user download, with "Content-disposition: attachment" header. File name should be specified in $fileName parameter. In case when it empty method will use template file/folder name. Missing ".xlsx" extension will be added.
- * 2) I - Excel workbook is being send out with Content-disposition: inline. It works only with older versions of MSIE/MS Office. It's not recommended to use it. Go for "D" with properly specified filename instead.
- * 3) F - Excel workbook will be saved as file with the name and path specified in $fileName parameter. If there's only file name, it will use current path so remember to chdir() to the location you need. If there's no $fileName, method will save workbook under temporary name. File name will be returned.
- * 4) S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name.
+ *
+ * 1. D - Excel workbook will be sent to the output as an XLSX file for user download, with "Content-disposition: attachment" header. File name should be specified in $fileName parameter. In case when it empty method will use template file/folder name. Missing ".xlsx" extension will be added.
+ * 2. I - Excel workbook is being send out with Content-disposition: inline. It works only with older versions of MSIE/MS Office. It's not recommended to use it. Go for "D" with properly specified filename instead.
+ * 3. F - Excel workbook will be saved as file with the name and path specified in $fileName parameter. If there's only file name, it will use current path so remember to chdir() to the location you need. If there's no $fileName, method will save workbook under temporary name. File name will be returned.
+ * 4. S (or default) - Method will return workbook file as string. If $fileName parameter is set, workbook will be also saved under this name.
  *
  * There's some smart guess option added for $dest parameter: if you specify only $fileName - omitted $dest will be set to 'D'. If $fileName containes directory separators - omitted $dest will be set to 'F' 
  *
  * Below are the examples of typical usage scenarios:
- * @example $xlsx->Output('my_workbook.xlsx', 'D'); // user will see download prompt with the file named 'my_workbook.xlsx'
- * @example $xlsx->Output('my_workbook.xlsx'); // the same, user will see download prompt with the file named 'my_workbook.xlsx'
- * @example $xlsx->Output('/var/files/my_workbook.xlsx', 'F'); // file will be saved on server
- * @example $xlsx->Output('my_workbook.xlsx', 'F'); // file will be saved at server in current working directory
- * @example $xlsx->Output('/my_workbook.xlsx'); // file will be tried to save on server root
- * @example $my_workbook = $xlsx->Output(); // variable $my_workbook will contain workbook file content. Usable when you need to make mail attachment, for example.
+ * * `$xlsx->Output('my_workbook.xlsx', 'D');` - user will see download prompt with the file named 'my_workbook.xlsx'
+ * * `$xlsx->Output('my_workbook.xlsx');` - the same, user will see download prompt with the file named 'my_workbook.xlsx'
+ * * `$xlsx->Output('/var/files/my_workbook.xlsx', 'F');` - file will be saved on server
+ * * `$xlsx->Output('my_workbook.xlsx', 'F');` - file will be saved at server in current working directory
+ * * `$xlsx->Output('/my_workbook.xlsx');` - file will be tried to save on server root
+ * * `$my_workbook = $xlsx->Output();` - variable $my_workbook will contain workbook file content. Usable when you need to make mail attachment, for example.
  * 
  * @param string $fileName (optional) File name. If not set, original template name will be used. Missing file extension (.xlsx) will be added automatically.
- * @param char $dest (optional) Destination of method output. See description above.
+ * @param string $dest (optional) Destination of method output. See description above.
  *
- * @return string with workbook file name when $dest="F" or string with workbook content when $dest="S". When $dest="I" or "D" it quits PHP with die(). 
+ * @category Read / Write
+ *
+ * @return string Workbook file name when $dest="F" or string with workbook content when $dest="S". When $dest="I" or "D" it quits PHP with die(). 
  */
 public function Output($fileName = "", $dest = "S") {
 
@@ -1567,38 +1690,54 @@ public function Output($fileName = "", $dest = "S") {
 }
 
 
-
+/**
+ * Throwable class for exceptions.
+ */
 class eiseXLSX_Exception extends Exception {
+    /**
+     * Class constructor, updates message and prints debug backtrace.
+     */
     public function __construct($msg) {
           parent::__construct('eiseXLSX error: ' . $msg);
           echo "<pre>";
           debug_print_backtrace();
           echo "</pre>";
     }
-
+    /**
+     * Allows to get message directly from the caught exception
+     */
     public function __toString() {
         return htmlspecialchars($this->getMessage());
     }
 }
 
 
-
+/**
+ * @ignore 
+ * Helper class for XLSX internal file manupulations.
+ */
 class eiseXLSX_FS {
 
+/** @ignore */
 private $path;
+/** @ignore */
 public $dirs = array();
+/** @ignore */
 public $filesContent = array();
 
+/** @ignore */
 public function __construct($path) {
     $this->path = rtrim($path, eiseXLSX::DS);
     return $this;
 }
 
+/** @ignore */
 public function get() {
     $this->_scan(eiseXLSX::DS);
     return array($this->dirs, $this->filesContent);
 }
 
+/** @ignore */
 private function _scan($pathRel) {
     
     if($handle = opendir($this->path . $pathRel)) {
