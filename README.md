@@ -19,6 +19,11 @@ You can use files received from users as your website’s output document templa
 
 Unlike other PHP libraries for XLSX files manipulation eiseXLSX is simple, compact and laconic. You don’t need to learn XLSX file format to operate with it. Just use only cell addresses in any formats (A1 and R1C1 are supported) and data from your website database. As simple as that.
 
+Project home: <http://russysdev.github.io/eiseXLSX/>
+On-line Reference Manual: <https://russysdev.github.io/eiseXLSX/docs>
+
+PHPClasses home: <https://www.phpclasses.org/package/8573-PHP-Read-and-write-Excel-spreadsheets-in-XLSX-format.html>
+
 Examples
 
 Write:
@@ -56,8 +61,9 @@ echo ($myData = $xlsx->data("R15C10")); //voilat!
 ?>
 ```
 
-New in version 1.6: 
+Latest news: 
 
+- WARNING: eiseXLSX::Output() function behaviour is changed. See more at <https://russysdev.github.io/eiseXLSX/docs#eisexlsx-output>.
 - method eiseXLSX::getDataValidationList($cellAddress) - returns data validation list as associative array.
 - static method eiseXLSX::checkAddressInRange() - checks whether cell address belong to given range or not.
 - method eiseXSLX::getDataByRange() - returns associative array of data in specified cell range.

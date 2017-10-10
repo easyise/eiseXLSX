@@ -1,7 +1,8 @@
 <?php
 /**
  * eiseXLSX
- *   
+ * ===
+ * 
  * XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.
  *
  * This class was designed for server-side manipulations with uploaded spreadsheets in Microsoft® Excel™ 2007-2011-2013 file format – OpenXML SpereadsheetML.
@@ -12,36 +13,33 @@
  * * clone sheets within workbook, remove unnecessary sheets
  * * colorization of cells.
  *
- * This library offers an easiest way to make Excel™-based EDI with PHP-based information systems, for data input and output.
+ * This library offers the easiest way to make Excel™-based data exchange with information systems written in PHP.
  * 
  * Users are no longer need to convert Excel™ spreadsheets to CSV and other formats, they can simply upload data to the website using their worksheets.
  * 
  * You can use files received from users as your website’s output document templates with 100% match of cell formats, sheet layout, design, etc. With eiseXLSX you can stop wasting your time working on output documents layout – you can just ask your customer staff to prepare documents they’d like to see in XLSX format. Then you can put these files to the server and fill them with necessary data using PHP.
  * 
  * Unlike other PHP libraries for XLSX files manipulation eiseXLSX is simple, compact and laconic. You don’t need to learn XLSX file format to operate with it. Just use only cell addresses in any formats (A1 and R1C1 are supported) and data from your website database. As simple as that.
- *   
- *   Based on:
- *
- *   Simple XLSX [http://www.kirik.ws/simpleXLSX.html]
- *   @author kirik [mail@kirik.ws]
- *   @version 0.1
- *    
- *   Developed under GNU General Public License, version 3: [http://www.gnu.org/licenses/lgpl.txt]
- *    
- *
  * 
- *
- * @uses SimpleXML
- * @uses DOM
- *
- * @package eiseXLSX [https://github.com/easyise/eiseXLSX]
+ * Project home: <http://russysdev.github.io/eiseXLSX/>
+ * On-line Reference Manual: <https://russysdev.github.io/eiseXLSX/docs>
  *   
- * @author Ilya Eliseev [ie@e-ise.com]
- * @copyright (c) 2012-2016 Ilya S. Eliseev
+ * >  Based on:  
+ * >  Simple XLSX   
+ * >  @author kirik <mail@kirik.ws>  
+ * >  @version 0.1  
+ * >  Developed under GNU General Public License, version 3: <http://www.gnu.org/licenses/lgpl.txt>
  *
- * @license GNU Public License [http://opensource.org/licenses/gpl-license.php] 
+ * @uses SimpleXML, DOM
  *
- * @version 1.6beta
+ * @package eiseXLSX <https://github.com/easyise/eiseXLSX>
+ *   
+ * @author Ilya Eliseev <ie@e-ise.com>, Continutors: Igor Zhuravlev, Dmitry Zakharov
+ * @copyright (c) 2012-2017 Ilya S. Eliseev
+ *
+ * @license GNU Public License <http://opensource.org/licenses/gpl-license.php>
+ *
+ * @version 1.9beta
  *
  */
 
@@ -73,11 +71,13 @@ private $_cSheet; // current sheet
 /** 
  * Default file name for output
  */
+/** @ignore */
 public $defaultFileName = 'eiseXLSX.xlsx';
 
 /**
- * Indexed colors acoring to XLSX file standard
+ * Indexed colors acсoring to XLSX file standard
  */
+/** @ignore */
 static $arrIndexedColors = Array('00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00000000', '00FFFFFF', '00FF0000', '0000FF00', '000000FF', '00FFFF00', '00FF00FF', '0000FFFF', '00800000', '00008000', '00000080', '00808000', '00800080', '00008080', '00C0C0C0', '00808080', '009999FF', '00993366', '00FFFFCC', '00CCFFFF', '00660066', '00FF8080', '000066CC', '00CCCCFF', '00000080', '00FF00FF', '00FFFF00', '0000FFFF', '00800080', '00800000', '00008080', '000000FF', '0000CCFF', '00CCFFFF', '00CCFFCC', '00FFFF99', '0099CCFF', '00FF99CC', '00CC99FF', '00FFCC99', '003366FF', '0033CCCC', '0099CC00', '00FFCC00', '00FF9900', '00FF6600', '00666699', '00969696', '00003366', '00339966', '00003300', '00333300', '00993300', '00993366', '00333399', '00333333');
 
 
@@ -775,7 +775,7 @@ public function cloneSheet($originSheetId, $newSheetName = ''){
  * 
  * @return null
  *
- * @category Workbook manupulations
+ * @category Workbook manipulations
  */
 public function renameSheet($sheetId, $newName){
 
@@ -802,7 +802,7 @@ public function renameSheet($sheetId, $newName){
  *
  * @return null
  *
- * @category Workbook Manupilations
+ * @category Workbook manipulations
  */
 public function removeSheet($id) {
     
@@ -1692,20 +1692,19 @@ public function Output($fileName = "", $dest = "S") {
 
 /**
  * Throwable class for exceptions.
+ * 
  */
 class eiseXLSX_Exception extends Exception {
     /**
      * Class constructor, updates message and prints debug backtrace.
+     *
      */
     public function __construct($msg) {
           parent::__construct('eiseXLSX error: ' . $msg);
-          echo "<pre>";
-          debug_print_backtrace();
-          echo "</pre>";
     }
-    /**
-     * Allows to get message directly from the caught exception
-     */
+/**
+ * Allows to get message directly from the caught exception
+ */
     public function __toString() {
         return htmlspecialchars($this->getMessage());
     }
