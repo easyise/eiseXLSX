@@ -1664,7 +1664,7 @@ public function Output($fileName = "", $dest = "S") {
                 $outFileName = ($fileNameSrc ? basename($fileNameSrc) : $this->defaultFileName);
                 if(!preg_match('/\.xlsx$/i', $outFileName))
                     $outFileName .= '.xlsx';
-                header('Content-Disposition: attachment; filename="' . $outFileName . '"');
+                header("Content-Disposition: attachment; filename*=UTF-8''".rawurlencode($outFileName) );
             }
             readfile($fileName); 
             unlink($fileName);
