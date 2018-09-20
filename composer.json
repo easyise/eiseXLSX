@@ -4,7 +4,6 @@
     "description": "XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.",
     "keywords": ["xlsx","Excel","spreadsheets", "OpenXML","SpreadsheetML"],
     "homepage": "https://russysdev.github.io/eiseXLSX/",
-    "version": "1.6beta",
     "license": "GPL-3.0-or-later",
     "authors": [
         {
