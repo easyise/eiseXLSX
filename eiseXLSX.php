@@ -1070,13 +1070,21 @@ private function formatDataWrite($type, $data, $c){
     
     if (isset($c['t']))
         unset($c['t']);
-    
+
     switch($type){
         case "d":
             $c->v[0] = $this->convertDateTime($data);
             break;
         default:
+            $localeconv = localeconv();
+            if($localeconv['decimal_point']!=='.' || $localeconv['thousands_sep']!==''){
+                $loc = @setlocale(LC_NUMERIC, 0);
+                @setlocale(LC_NUMERIC, 'C');
+            }
             $c->v[0] = (string)$data;
+            if(($localeconv['decimal_point']!=='.' || $localeconv['thousands_sep']!=='') && $loc){
+                @setlocale(LC_NUMERIC, $loc);
+            }
             break;
     }
 }
