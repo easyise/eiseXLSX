@@ -1,0 +1,19 @@
+{
+    "name": "easyise/eiseXLSX",
+    "type": "library",
+    "description": "XLSX file data read-write library that operates with native cell addresses like A1 or R1C1.",
+    "keywords": ["xlsx","Excel","spreadsheets", "OpenXML","SpreadsheetML"],
+    "homepage": "https://russysdev.github.io/eiseXLSX/",
+    "license": "GNU Public License, ver 3",
+    "authors": [
+        {
+            "name": "Ilya Eliseev",
+            "email": "ie@e-ise.com",
+            "homepage": "http://russysdev.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.2.17"
+    }
+}
