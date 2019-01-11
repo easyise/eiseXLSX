@@ -868,10 +868,10 @@ protected function getPathByRelTarget($relFilePath, $targetPath){
     
     // get directory path of rel file
     $relFileDirectory = preg_replace("/(_rels)$/", "", dirname($relFilePath));
-    $arrPath = split("/", rtrim($relFileDirectory, "/"));
-    
+    $arrPath = explode("/", rtrim($relFileDirectory, "/"));
+
     // calculate path to target file
-    $arrTargetPath = split("/", ltrim($targetPath, "/"));    
+    $arrTargetPath = explode("/", ltrim($targetPath, "/"));    
     foreach($arrTargetPath as $directory){
         switch($directory){
             case ".":
@@ -1653,6 +1653,19 @@ public function Output($fileName = "", $dest = "S") {
                 ini_set('zlib.output_compression', 'Off'); 
             }
 
+            if(headers_sent($file,$line))
+                throw new eiseXLSX_Exception("Some data has already been output, can't send XLSX file (output started at $file:$line)");
+            if(ob_get_length()){
+                // The output buffer is not empty
+                if(preg_match('/^(\xEF\xBB\xBF)?\s*$/',ob_get_contents()))
+                {
+                    // It contains only a UTF-8 BOM and/or whitespace, let's clean it
+                    ob_clean();
+                }
+                else
+                    throw new eiseXLSX_Exception("Some data has already been output, can't send XLSX file");
+            }
+
             // http://ca.php.net/manual/en/function.header.php#76749
             header('Pragma: public'); 
             header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");                  // Date in the past    
@@ -1662,9 +1675,7 @@ public function Output($fileName = "", $dest = "S") {
             header("Pragma: no-cache"); 
             header("Expires: 0"); 
             header('Content-Transfer-Encoding: none'); 
-//            header('Content-Type: application/vnd.ms-excel;');                 // This should work for IE & Opera 
             header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-//            header("Content-type: application/x-msexcel");                    // This should work for the rest 
             if ($dest=="I"){
                 header('Content-Disposition: inline"');
             }
