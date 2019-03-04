@@ -951,20 +951,19 @@ private function formatDataRead($style, $data){
         case "15": // = 'd-mmm-yy';
         case "16": // = 'd-mmm';
         case "17": // = 'mmm-yy';
+        case "22": // = 'm/d/yy h:mm';
         case "18": // = 'h:mm AM/PM';
         case "19": // = 'h:mm:ss AM/PM';
         case "20": // = 'h:mm';
         case "21": // = 'h:mm:ss';
-        case "22": // = 'm/d/yy h:mm';
-            return date("Y-m-d", 60*60*24* ($data - self::Date_Bias));
-            //return $data
+            return $this->getDateTimeString($data);
         default: 
             if ((int)$numFmt>=164){ //look for custom format number
                 foreach($this->styles->numFmts[0]->numFmt as $o_numFmt){
                     if ((int)$o_numFmt["numFmtId"]==(int)$numFmt){
                         $formatCode = (string)$o_numFmt["formatCode"];
                         if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
-                            return date("Y-m-d", 60*60*24* ($data - self::Date_Bias));
+                            return $this->getDateTimeString($data);
                         }
                         break;
                     }
@@ -973,6 +972,33 @@ private function formatDataRead($style, $data){
             return $data;
             break;
     }
+}
+
+/**
+ * This function returns date-time string in ISO format `YYYY-MM-DD HH:MM:SS`. It works a bit smart: if cell value has only time (e.g 22:13 ) it will return only time part of the date-time string (22:13:00 in this case). In other case, when there's only date part (e.g. 04.03.2019) it will return only date (2019-03-04 in our case). Otherwise, when cell contains both parts, it will return full date-time string.
+ * 
+ * @param string $data - contents of <c> tag.
+ *
+ * @return string - date-time string.
+ */
+/** @ignore  */
+protected function getDateTimeString($data){
+
+    $tz = date_default_timezone_get();
+    date_default_timezone_set('UTC');
+
+    $timestamp = 60*60*24* ($data - self::Date_Bias);
+
+    if($timestamp < 60*60*24*2)
+        $ret = date("H:i:s", $timestamp);
+    else if ($timestamp == round($timestamp))
+        $ret = date("Y-m-d", $timestamp);
+    else 
+        $ret = date("Y-m-d H:i:s", $timestamp);
+
+    date_default_timezone_set($tz);
+
+    return $ret;
 }
 
 /** @ignore  */
