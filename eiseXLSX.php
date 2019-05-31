@@ -131,7 +131,7 @@ public function __construct( $templatePath='' ) {
         }
         
         if (preg_match("/\.rels$/", $path)){
-            foreach($this->arrXMLs[$path]->Relationship as $Relationship){
+            foreach((object)$this->arrXMLs[$path]->Relationship as $Relationship){
                 if((string)$Relationship["Type"]=="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument") {
                     $this->officeDocumentPath = self::getPathByRelTarget($path, (string)$Relationship["Target"]);
                     $this->officeDocument = &$this->arrXMLs[$this->officeDocumentPath];
