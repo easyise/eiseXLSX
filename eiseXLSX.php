@@ -450,6 +450,171 @@ public function getRowCount(){
 }
 
 /**
+ * This function formats cell at $cellAddress with font style specified in $fontStyle or set it to "normal", if $fontStyle is set to NULL or ''.
+ * If cell is not found or style string is wrongly specified, it throws an exception.
+ *
+ * @param string $cellAddress Cell address, both A1 and R1C1 address formats are acceptable.
+ * @param string $fontStyle, possible values are: "normal", "bold", "italic", "strikethrough". Style combination can be set using commas.
+ *
+ * @return simpleXML object that represents specified cell.
+ *
+ * @category Cell decoration
+ */
+public function fontStyle($cellAddress, $fontStyle){
+
+    $allowedStyles = array("normal", "bold", "italic", "strikethrough");
+
+    // locate cell, if no cell - throw exception
+    list( $x, $y, $addrA1, $addrR1C1 ) = self::cellAddress($cellAddress);
+    $c = &$this->locateCell($x, $y);
+    
+    if ($c===null){
+        throw new eiseXLSX_Exception('cannot apply font style - no cell at '.$cellAddress);
+    }
+
+    if($fontStyle===null || $fontStyle==='')
+        $fontStyle = 'normal';
+    
+    $aFontStyle = preg_split('/[\s,;:|]/', $fontStyle);
+    
+    // locate style, if no style - add
+    if ($c["s"]){
+        $cellXf = $this->styles->cellXfs->xf[(int)$c["s"]];
+        $fontIx = (int)$cellXf["fontId"];
+    } else {
+        $cellXf = null;
+        $fontIx = 0;
+    }
+
+    // locate source font
+    $oFont = $this->styles->fonts->font[$fontIx];
+    $oFont_set = simplexml_load_string($oFont->asXML());
+
+    // make destination font vector
+    foreach($aFontStyle as $style){
+        switch ($style) {
+            case 'normal':
+                foreach($oFont_set as $chd){
+                    if(in_array((string)$chd->nodeName(), array('b', 'i', 'strike')))
+                        unset($chd);
+                }
+                break;
+            case 'bold':
+                $this->insertElementByPosition(0, simplexml_load_string('<b/>'), $oFont_set);
+                break;
+            case 'italic':
+                $this->insertElementByPosition(0, simplexml_load_string('<i/>'), $oFont_set);
+                break;
+            case 'strikethrough':
+                $this->insertElementByPosition(0, simplexml_load_string('<strike/>'), $oFont_set);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // search for similar font vector, if found - set font id
+
+    $ix = 0;
+    $fontIx_set = null;
+    foreach($this->styles->fonts->font as $oFont){
+        if( !self::xml_diff($oFont, $oFont_set) ){
+            $fontIx_set = $ix;
+            break;
+        }
+        $ix++;
+    }
+
+    // if no such fonts - we add it
+    if($fontIx_set===null){
+        $this->insertElementByPosition((int)$this->styles->fonts["count"], $oFont_set, $this->styles->fonts);
+        $fontIx_set = (int)$this->styles->fonts["count"];
+        $this->styles->fonts["count"] = (int)$this->styles->fonts["count"]+1;
+    }
+
+    // search for similar style
+    $styleIx=null;
+    if($cellXf!==null){
+        $cellXf['fontId'] = $fontIx_set;
+        $ix = 0;
+        foreach($this->styles->cellXfs->xf as $xf ){
+            if( !self::xml_diff($xf, $cellXf) ) {
+                $styleIx = $ix; break;
+            } 
+            $ix++;
+        }
+    } 
+
+
+    if($styleIx===null){
+        // add style
+        $xmlXF = ($cellXf!==null ? $cellXf : simplexml_load_string("<xf borderId=\"0\" fillId=\"0\" fontId=\"{$fontIx_set}\" numFmtId=\"0\" xfId=\"0\"/>"));
+        $this->insertElementByPosition((int)$this->styles->cellXfs["count"], $xmlXF, $this->styles->cellXfs);
+        $styleIx = (int)$this->styles->cellXfs["count"];
+        $this->styles->cellXfs["count"] = (int)$this->styles->cellXfs["count"]+1;
+        $c["s"] = $styleIx ; // update cell with style
+        $cellXf = $this->styles->cellXfs->xf[(int)$c["s"]];
+    }
+    
+    if ($styleIx!==null)
+        $c["s"] = $styleIx;
+
+    return $c;
+
+}
+
+public static function xml_diff($node1, $node2){
+    
+    $diff = null;
+
+    foreach($node1->attributes() as $attr=>$value){
+        // attributes
+        if((!isset($node2[$attr]) || (string)$node2[$attr] != (string)$value) && !($node2[$attr]===null && $value===null)){
+            $diff['left']['attr'][$attr] = (string)$value;
+        }
+
+    }
+    foreach($node1 as $chdNode1){
+        $nodeExists = false;
+        $nodeName = (string)$chdNode1->getName();
+        foreach ($node2 as $chdNode2) {
+            if($nodeName === (string)$chdNode2->getName()){
+                $diff_chd = self::xml_diff($chdNode1, $chdNode2);
+                if($diff_chd!==null)
+                    $diff['left']['child'][$nodeName] = $diff_chd;
+                $nodeExists = true;
+            }
+        }
+        if(!$nodeExists)
+            $diff['left']['child'][$nodeName] = null;
+    }
+    foreach($node2->attributes() as $attr=>$value){
+        // attributes
+        if((!isset($node1[$attr]) || (string)$node1[$attr] != (string)$value) && !($node1[$attr]===null && $value===null)){
+            $diff['right']['attr'][$attr] = (string)$value;
+        }
+
+    }
+    foreach($node2 as $chdNode1){
+        $nodeExists = false;
+        $nodeName = (string)$chdNode1->getName();
+        foreach ($node1 as $chdNode2) {
+            if($nodeName == (string)$chdNode2->getName()){
+                $diff_chd = self::xml_diff($chdNode1, $chdNode2);
+                if($diff_chd!==null)
+                    $diff['right']['child'][$nodeName] = $diff_chd;
+                $nodeExists = true;
+            }
+        }
+        if(!$nodeExists)
+            $diff['right']['child'][$nodeName] = null;
+    }
+
+    return $diff;
+
+}
+
+/**
  * Fills cell at $cellAddress with color $fillColor or clears cell off any background color, if $fillColor is set to NULL, 0 or ''.
  * If cell is not found or color string is wrongly specified, it throws an exception.
  *
