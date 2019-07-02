@@ -495,7 +495,7 @@ public function fontStyle($cellAddress, $fontStyle){
         switch ($style) {
             case 'normal':
                 foreach($oFont_set as $chd){
-                    if(in_array((string)$chd->nodeName(), array('b', 'i', 'strike')))
+                    if(in_array((string)$chd->getName(), array('b', 'i', 'strike')))
                         unset($chd);
                 }
                 break;
@@ -514,7 +514,6 @@ public function fontStyle($cellAddress, $fontStyle){
     }
 
     // search for similar font vector, if found - set font id
-
     $ix = 0;
     $fontIx_set = null;
     foreach($this->styles->fonts->font as $oFont){
@@ -535,10 +534,11 @@ public function fontStyle($cellAddress, $fontStyle){
     // search for similar style
     $styleIx=null;
     if($cellXf!==null){
-        $cellXf['fontId'] = $fontIx_set;
+        $_cellXf = simplexml_load_string($cellXf->asXML());
+        $_cellXf['fontId'] = $fontIx_set;
         $ix = 0;
         foreach($this->styles->cellXfs->xf as $xf ){
-            if( !self::xml_diff($xf, $cellXf) ) {
+            if( !self::xml_diff($xf, $_cellXf) ) {
                 $styleIx = $ix; break;
             } 
             $ix++;
@@ -548,15 +548,12 @@ public function fontStyle($cellAddress, $fontStyle){
 
     if($styleIx===null){
         // add style
-        $xmlXF = ($cellXf!==null ? $cellXf : simplexml_load_string("<xf borderId=\"0\" fillId=\"0\" fontId=\"{$fontIx_set}\" numFmtId=\"0\" xfId=\"0\"/>"));
+        $xmlXF = ($_cellXf!==null ? $_cellXf : simplexml_load_string("<xf borderId=\"0\" fillId=\"0\" fontId=\"{$fontIx_set}\" numFmtId=\"0\" xfId=\"0\"/>"));
         $this->insertElementByPosition((int)$this->styles->cellXfs["count"], $xmlXF, $this->styles->cellXfs);
         $styleIx = (int)$this->styles->cellXfs["count"];
         $this->styles->cellXfs["count"] = (int)$this->styles->cellXfs["count"]+1;
         $c["s"] = $styleIx ; // update cell with style
-        $cellXf = $this->styles->cellXfs->xf[(int)$c["s"]];
-    }
-    
-    if ($styleIx!==null)
+    } else
         $c["s"] = $styleIx;
 
     return $c;
