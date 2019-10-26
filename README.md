@@ -19,6 +19,8 @@ You can use files received from users as your website’s output document templa
 
 Unlike other PHP libraries for XLSX files manipulation eiseXLSX is simple, compact and laconic. You don’t need to learn XLSX file format to operate with it. Just use only cell addresses in any formats (A1 and R1C1 are supported) and data from your website database. As simple as that.
 
+Donate on Patreon: https://www.patreon.com/easyise
+
 Project home: <http://russysdev.github.io/eiseXLSX/>
 On-line Reference Manual: <https://russysdev.github.io/eiseXLSX/docs>
 

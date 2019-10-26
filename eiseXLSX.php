@@ -202,7 +202,7 @@ public function data($cellAddress, $data = null, $t = "s"){
     
     $c = $this->locateCell($x, $y);
     if (!$c && $data !== null){
-        $c = &$this->addCell($x, $y);
+        $c = $this->addCell($x, $y);
     }
     
     
@@ -226,7 +226,7 @@ public function data($cellAddress, $data = null, $t = "s"){
             !(!is_object($data) && (string)$data=="")
             ) // if we'd like to set data and not to empty this cell
             if ($t=="s") {// if forthcoming type is string, we add shared string
-                $o_si = &$this->addSharedString($c);
+                $o_si = $this->addSharedString($c);
                 $o_v = &$c->v[0];
             } else { // if not, value is inside '<v>' tag
                 $c->addChild("v", $data);
@@ -1314,7 +1314,7 @@ private function addCell($x, $y){
     }
     
     $xmlCell = simplexml_load_string("<c r=\"".$this->index2letter($x).$y."\"></c>");
-    $oCell = &$this->insertElementByPosition($x, $xmlCell, $oRow);
+    $oCell = $this->insertElementByPosition($x, $xmlCell, $oRow);
     
     return $oCell;
     
@@ -1555,7 +1555,7 @@ private static function colorExcel2W3C($color){
 }
 
 /** @ignore */
-private function letter2index($strLetter){
+private static function letter2index($strLetter){
     $x = 0;
     $nLength = ord("Z")-ord("A")+1;
     for($i = strlen($strLetter)-1; $i>=0;$i--){
