@@ -816,6 +816,21 @@ public function cloneRow($ySrc, $yDest){
 }
 
 /**
+ * This function sets number of copies to print current sheet.
+ * 
+ * @param int $nCopies - number of copies
+ *
+ * @return none
+ *
+ * @category Sheet manipulations
+ */
+public function setNumberOfCopies($nCopies){
+    
+    $this->_cSheet->pageSetup['copies'] = $nCopies;
+    // die(htmlspecialchars( $this->_cSheet->pageSetup->asXML()) );
+}
+
+/**
  * This function returns sheet ID as specified in sheetId attribute of the officeDocument.
  * 
  * @param $name string - sheet name to find
