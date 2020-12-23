@@ -60,7 +60,7 @@ const TPL_DIR = 'templates';
 /** @ignore */
 private $_parsed = array();
 /** @ignore */
-private $arrXMLs = array(); // all XML files
+public $arrXMLs = array(); // all XML files
 /** @ignore */
 private $arrSheets = array(); // all sheets
 /** @ignore */
@@ -153,7 +153,7 @@ public function __construct( $templatePath='' ) {
         }
         
     }
-    
+
     $this->officeDocumentRelPath = self::getRelFilePath($this->officeDocumentPath);
     $ix = 0;
     foreach($this->officeDocument->sheets->sheet as $sheet) {
