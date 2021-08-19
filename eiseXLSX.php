@@ -1738,7 +1738,7 @@ public function unzipToDirectory($zipFilePath, $targetDirName){
         throw new eiseXLSX_Exception("File not found: {$zipFilePath}"); 
 
     $zip=zip_open($zipFilePath);
-    if(!$zip) { 
+    if (!is_resource($zip)) { 
         throw new eiseXLSX_Exception("Wrong file format: {$zipFilePath}"); 
     }
 
