@@ -65,6 +65,12 @@ echo ($myData = $xlsx->data("R15C10")); //voilat!
 
 Latest news: 
 
+- 1.6.0.4: I've added an ability to keep formulas in cells when data is set. Function data() is updated with parameter $flags, put there ['keep_formula'=>True] and formula will be kept for given cell. \
+Example:
+```
+$xlsx->data('R1C1', 42, 'n', ['keep_formula' => True]);
+```
+
 - WARNING: eiseXLSX::Output() function behaviour is changed. See more at <https://russysdev.github.io/eiseXLSX/docs#eisexlsx-output>.
 - method eiseXLSX::getDataValidationList($cellAddress) - returns data validation list as associative array.
 - static method eiseXLSX::checkAddressInRange() - checks whether cell address belong to given range or not.
