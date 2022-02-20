@@ -1037,6 +1037,39 @@ public function removeSheet($id) {
     
 }
 
+/**
+ * unlockSheets() method removes necessity to enter password to modify any data/run macro by withdrawing of sheetProtection tag.
+ *
+ * @param string $id sheetId of target sheet (optional) or list of sheet ids to unlock. By default, it removes protection from all sheets.
+ *
+ * @return null
+ *
+ * @category Workbook manipulations
+ */
+public function unlockSheets($id_to_unlock = null) {
+
+    $sheetIDs_2_unlock = ($id_to_unlock!==null 
+        ? (is_array($id_to_unlock)
+            ? $id_to_unlock
+            : [$id_to_unlock])
+        : null);
+
+
+    foreach($this->officeDocument->sheets->sheet as $sheet) {
+        
+        $id = (string)$sheet["sheetId"];
+
+        if($sheetIDs_2_unlock!==null && !in_array($id, $sheetIDs_2_unlock))
+            continue;
+ 
+        $this->selectSheet($id);
+
+        unset($this->_cSheet->sheetProtection[0]);
+        
+    }
+    
+}
+
 /**********************************************/
 // XLSX internal file structure manupulation
 /**********************************************/

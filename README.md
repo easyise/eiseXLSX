@@ -65,7 +65,22 @@ echo ($myData = $xlsx->data("R15C10")); //voilat!
 
 Latest news: 
 
-- 1.6.0.4: I've added an ability to keep formulas in cells when data is set. Function data() is updated with parameter $flags, put there ['keep_formula'=>True] and formula will be kept for given cell. \
+- __1.6.1.0__: Now there's the unlockSheets() method that removes necessity to enter password to modify any data/run macro by withdrawing of sheetProtection tag from all or some specified sheets. \
+Example:
+```
+$xlsx->unlockSheets(); // unlocks all sheets
+```
+or
+```
+$xlsx->unlockSheets(1); // unlocks sheet with sheetId=1
+```
+or
+```
+$xlsx->unlockSheets([1, 2, 4]); // unlocks sheet with sheetId's 1, 2 and 4.
+```
+
+
+- __1.6.0.4__: I've added an ability to keep formulas in cells when data is set. Function data() is updated with parameter $flags, put there ['keep_formula'=>True] and formula will be kept for given cell. \
 Example:
 ```
 $xlsx->data('R1C1', 42, 'n', ['keep_formula' => True]);
