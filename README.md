@@ -90,3 +90,6 @@ $xlsx->data('R1C1', 42, 'n', ['keep_formula' => True]);
 - method eiseXLSX::getDataValidationList($cellAddress) - returns data validation list as associative array.
 - static method eiseXLSX::checkAddressInRange() - checks whether cell address belong to given range or not.
 - method eiseXSLX::getDataByRange() - returns associative array of data in specified cell range.
+
+&copy;2013-2022 Ilya S. Eliseev \
+Licensed under GNU Public License v 2.0
