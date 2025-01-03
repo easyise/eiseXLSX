@@ -1129,7 +1129,7 @@ protected function getRelFilePath($xmlPath){
 private function updateSharedString($o_si, $data){
     
     $dom_si = dom_import_simplexml($o_si);
-         
+    
     while ($dom_si->hasChildNodes()) {
         $dom_si->removeChild($dom_si->firstChild);
     }
@@ -1188,9 +1188,17 @@ private function formatDataRead($style, $data){
                 foreach($this->styles->numFmts[0]->numFmt as $o_numFmt){
                     if ((int)$o_numFmt["numFmtId"]==(int)$numFmt){
                         $formatCode = (string)$o_numFmt["formatCode"];
-                        if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
-                            return $this->getDateTimeString($data);
-                        }
+                        // if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
+                        //     return $this->getDateTimeString($data);
+                        // }
+
+						// look for date format
+						if (preg_match("/(([d]{1,2}|[y]{2,4})[-|.|\/|:][m]{1,2}[-|.|\/|:]([y]{2,4}|[d]{1,2}))/i", $formatCode)) {
+							return $this->getDateTimeString($data);
+						}
+						elseif (preg_match("/(€|\$)/i", $formatCode)) { //currency $ OR €
+							return $data;
+						}
                         break;
                     }
                 }
