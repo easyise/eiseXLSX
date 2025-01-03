@@ -1136,6 +1136,8 @@ private function updateSharedString($o_si, $data){
     
     if (!is_object($data)){
         $data = simplexml_load_string("<richText><t>".htmlspecialchars($data)."</t></richText>");
+		// preserve line breaks and spaces
+		$data->t->addAttribute("dump:xml:space", "preserve");
     }
     
     foreach($data->children() as $childNode){
