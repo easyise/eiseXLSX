@@ -1416,7 +1416,7 @@ private function addRow($y, $oRow){
 /** @ignore  */
 private function shiftDownMergedCells($yStart, $yOrigin = null){
     
-    if (count($this->_cSheet->mergeCells->mergeCell)==0)
+    if (!isset($this->_cSheet->mergeCells->mergeCell) || count($this->_cSheet->mergeCells->mergeCell)==0)
         return;
     
     $toAdd = Array();
