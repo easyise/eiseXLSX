@@ -452,6 +452,18 @@ public function getRowCount(){
 }
 
 /**
+ * This method returns number of cols in active sheet.
+ *
+ * @return int - col number of the last col.
+ *
+ * @category Sheet manipulations
+ */
+public function getColCount(){
+	return count($this->_cSheet->cols->col);
+}
+
+
+/**
  * This function formats cell at $cellAddress with font style specified in $fontStyle or set it to "normal", if $fontStyle is set to NULL or ''.
  * If cell is not found or style string is wrongly specified, it throws an exception.
  *
