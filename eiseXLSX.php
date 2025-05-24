@@ -452,6 +452,18 @@ public function getRowCount(){
 }
 
 /**
+ * This method returns number of cols in active sheet.
+ *
+ * @return int - col number of the last col.
+ *
+ * @category Sheet manipulations
+ */
+public function getColCount(){
+	return count($this->_cSheet->cols->col);
+}
+
+
+/**
  * This function formats cell at $cellAddress with font style specified in $fontStyle or set it to "normal", if $fontStyle is set to NULL or ''.
  * If cell is not found or style string is wrongly specified, it throws an exception.
  *
@@ -1117,13 +1129,15 @@ protected function getRelFilePath($xmlPath){
 private function updateSharedString($o_si, $data){
     
     $dom_si = dom_import_simplexml($o_si);
-         
+    
     while ($dom_si->hasChildNodes()) {
         $dom_si->removeChild($dom_si->firstChild);
     }
     
     if (!is_object($data)){
         $data = simplexml_load_string("<richText><t>".htmlspecialchars($data)."</t></richText>");
+		// preserve line breaks and spaces
+		$data->t->addAttribute("dump:xml:space", "preserve");
     }
     
     foreach($data->children() as $childNode){
@@ -1174,9 +1188,17 @@ private function formatDataRead($style, $data){
                 foreach($this->styles->numFmts[0]->numFmt as $o_numFmt){
                     if ((int)$o_numFmt["numFmtId"]==(int)$numFmt){
                         $formatCode = (string)$o_numFmt["formatCode"];
-                        if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
-                            return $this->getDateTimeString($data);
-                        }
+                        // if (preg_match("/[dmyh]+/i", $formatCode)){ // CHECK THIS OUT!!! it's just a guess!
+                        //     return $this->getDateTimeString($data);
+                        // }
+
+						// look for date format
+						if (preg_match("/(([d]{1,2}|[y]{2,4})[-|.|\/|:][m]{1,2}[-|.|\/|:]([y]{2,4}|[d]{1,2}))/i", $formatCode)) {
+							return $this->getDateTimeString($data);
+						}
+						elseif (preg_match("/(€|\$)/i", $formatCode)) { //currency $ OR €
+							return $data;
+						}
                         break;
                     }
                 }
@@ -1394,7 +1416,7 @@ private function addRow($y, $oRow){
 /** @ignore  */
 private function shiftDownMergedCells($yStart, $yOrigin = null){
     
-    if (count($this->_cSheet->mergeCells->mergeCell)==0)
+    if (!isset($this->_cSheet->mergeCells->mergeCell) || count($this->_cSheet->mergeCells->mergeCell)==0)
         return;
     
     $toAdd = Array();
