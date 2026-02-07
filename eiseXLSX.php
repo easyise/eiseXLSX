@@ -241,7 +241,7 @@ public function data($cellAddress, $data = null, $t = "s", $flags = null){
             unset($c["t"]);
             unset($c->v[0]);
         } else { // we set received value
-            if(!$flags['keep_formula']){
+            if(empty($flags['keep_formula']) && isset($c->f[0])){ // if there's formula and we don't need to keep it{
                 unset($c->f[0]); // remove forumla
             } 
             if( is_numeric($data) && func_num_args()==2 ) // if default
