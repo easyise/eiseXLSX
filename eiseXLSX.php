@@ -1778,7 +1778,7 @@ private function renameFile($oldName, $newName){
 }
 
 /** @ignore */
-public function unzipToDirectory($zipFilePath, $targetDirName){
+static public function unzipToDirectory($zipFilePath, $targetDirName){
 
     if (file_exists($targetDirName)){
         self::rmrf($targetDirName);
@@ -1819,7 +1819,7 @@ private function unzipToMemory($zipFilePath){
 
     $targetDirName = tempnam(sys_get_temp_dir(), 'eiseXLSX_');
     
-    $this->unzipToDirectory($zipFilePath, $targetDirName);
+    self::unzipToDirectory($zipFilePath, $targetDirName);
 
     $eiseXLSX_FS = new eiseXLSX_FS($targetDirName);
     $arrRet = $eiseXLSX_FS->get();
@@ -1831,8 +1831,7 @@ private function unzipToMemory($zipFilePath){
 }
 
 /** @ignore deletes directory recursively, like rm -rf */
-protected function rmrf($dir){
-    
+static protected function rmrf($dir){    
     if(is_dir($dir)){
         $ffs = scandir($dir);
         foreach($ffs as $file) { 
